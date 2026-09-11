@@ -1,1 +1,2103 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HKDSE Probability Revision Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            svg: { fontCache: 'global', linebreaks: { inline: true } }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .heart-bounce { animation: bounce 1s infinite; }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-20%) scale(1.1); }
+        }
+        .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1000;
+        }
+        .toast {
+            min-width: 250px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            animation: slideIn 0.3s ease-out forwards;
+            opacity: 0;
+            transform: translateX(100%);
+        }
+        .toast.success { background-color: #10b981; }
+        .toast.error { background-color: #ef4444; }
+        .toast.info { background-color: #3b82f6; }
+        .toast.fade-out { animation: fadeOut 0.5s ease-in forwards; }
+
+        @keyframes slideIn {
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes fadeOut {
+            to { opacity: 0; transform: translateX(100%); }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px;}
+        ::-webkit-scrollbar-track { background: rgba(30, 41, 59, 0.5); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+
+        .stat-table { margin: 0.75rem auto; border-collapse: collapse; font-size: 0.9rem; }
+        .stat-table td, .stat-table th {
+            border: 1px solid #475569;
+            padding: 4px 12px;
+            text-align: center;
+            color: #e2e8f0;
+        }
+        .stat-table th { background: rgba(51, 65, 85, 0.6); color: #94a3b8; font-weight: 600; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-4 selection:bg-amber-500 selection:text-white">
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <div id="login-screen" class="w-full max-w-md glass-panel rounded-3xl p-8 shadow-2xl transition-all duration-500">
+        <div class="text-center mb-8">
+            <div class="text-5xl mb-4">🎲</div>
+            <h1 class="text-2xl font-bold text-white mb-2">HKDSE Mathematics</h1>
+            <h2 class="text-amber-400 font-semibold tracking-wide uppercase text-sm">Probability Revision</h2>
+        </div>
+
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-slate-400 mb-1">Class (e.g., 4A)</label>
+                <input type="text" id="student-class" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 uppercase" placeholder="4A">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-400 mb-1">Class Number</label>
+                <input type="number" id="student-no" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" placeholder="12">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-400 mb-1">Name</label>
+                <input type="text" id="student-name" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" placeholder="Chan Tai Man">
+            </div>
+            <button onclick="login()" class="w-full mt-6 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-3 px-4 rounded-lg transition shadow-lg shadow-amber-500/20 active:scale-95">
+                Start Mission
+            </button>
+        </div>
+    </div>
+
+    <div id="dashboard-screen" class="hidden w-full max-w-3xl flex flex-col gap-6 transition-all duration-500">
+
+        <!-- Header -->
+        <div class="glass-panel rounded-2xl p-6 flex justify-between items-center shadow-xl">
+            <div>
+                <h2 class="text-2xl font-bold text-white" id="display-name">Welcome, Student</h2>
+                <p class="text-slate-400 text-sm">Class: <span id="display-class" class="text-amber-400 font-semibold"></span> | No: <span id="display-no" class="text-amber-400 font-semibold"></span></p>
+            </div>
+            <button onclick="logout()" class="text-slate-400 hover:text-white transition text-sm">
+                Switch User 🚪
+            </button>
+        </div>
+
+        <!-- Completion Passport -->
+        <div class="glass-panel rounded-2xl p-6 shadow-xl border border-amber-500/30 relative overflow-hidden">
+            <div class="absolute top-0 right-0 p-4 opacity-10 pointer-events-none text-8xl">🎓</div>
+
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b border-slate-700/60 pb-4">
+                <h3 class="text-lg font-bold text-amber-400 flex items-center gap-2">
+                    🎓 Completion Passport (學習記錄卡)
+                </h3>
+                <div class="flex flex-wrap gap-2 z-10 justify-end">
+                    <button id="btn-submit-teacher" onclick="submitToTeacher()" class="bg-blue-600 hover:bg-blue-500 border border-blue-400 text-white px-3 py-2 rounded-lg font-semibold transition shadow-lg shadow-blue-500/20 text-sm flex items-center gap-2 active:scale-95">
+                        <span>Submit to Teacher</span> 📧
+                    </button>
+                    <button onclick="resetBadges()" class="bg-slate-700 hover:bg-slate-600 border border-slate-500 text-slate-200 px-3 py-2 rounded-lg transition text-sm active:scale-95">
+                        Reset 🔄
+                    </button>
+                </div>
+            </div>
+
+            <!-- Score Board -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
+                <div class="bg-slate-800/80 rounded-xl p-4 text-center border border-slate-700 transition duration-300" id="badge-card-1">
+                    <div class="text-3xl mb-2" id="badge-icon-1">🔒</div>
+                    <div class="font-bold text-slate-200">Level 1</div>
+                    <div class="text-xs text-slate-400 mb-2">Introduction to Probability</div>
+                    <div id="badge-status-1" class="text-sm font-semibold text-slate-500">Not Attempted</div>
+                    <div class="mt-2 inline-flex items-center gap-1 bg-slate-900/80 border border-amber-500/30 rounded-full px-3 py-1">
+                        <span class="text-xs text-amber-300 font-bold">⭐ <span id="score-1">0</span> marks</span>
+                    </div>
+                </div>
+                <div class="bg-slate-800/80 rounded-xl p-4 text-center border border-slate-700 transition duration-300" id="badge-card-2">
+                    <div class="text-3xl mb-2" id="badge-icon-2">🔒</div>
+                    <div class="font-bold text-slate-200">Level 2</div>
+                    <div class="text-xs text-slate-400 mb-2">More about Probability</div>
+                    <div id="badge-status-2" class="text-sm font-semibold text-slate-500">Not Attempted</div>
+                    <div class="mt-2 inline-flex items-center gap-1 bg-slate-900/80 border border-amber-500/30 rounded-full px-3 py-1">
+                        <span class="text-xs text-amber-300 font-bold">⭐ <span id="score-2">0</span> marks</span>
+                    </div>
+                </div>
+                <div class="bg-slate-800/80 rounded-xl p-4 text-center border border-slate-700 transition duration-300" id="badge-card-3">
+                    <div class="text-3xl mb-2" id="badge-icon-3">🔒</div>
+                    <div class="font-bold text-slate-200">Level 3</div>
+                    <div class="text-xs text-slate-400 mb-2">Conventional (a)(b) Questions</div>
+                    <div id="badge-status-3" class="text-sm font-semibold text-slate-500">Not Attempted</div>
+                    <div class="mt-2 inline-flex items-center gap-1 bg-slate-900/80 border border-amber-500/30 rounded-full px-3 py-1">
+                        <span class="text-xs text-amber-300 font-bold">⭐ <span id="score-3">0</span> marks</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 relative z-10 flex justify-center">
+                <div class="bg-gradient-to-r from-amber-500/20 via-yellow-500/20 to-amber-500/20 border border-amber-500/40 rounded-full px-6 py-2 flex items-center gap-3">
+                    <span class="text-lg">🏆</span>
+                    <span class="text-sm font-bold text-amber-300">Total Marks: <span id="total-marks" class="text-xl font-extrabold text-yellow-300">0</span></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-panel rounded-2xl p-6 shadow-xl">
+            <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 text-center">
+                📋 Question Format (題目模式)
+            </h3>
+            <div class="flex flex-col gap-2 text-sm text-slate-300 bg-slate-800/60 border border-slate-700 rounded-lg p-4 text-left">
+                <p>📘 <strong>Paper 1 questions</strong> (Ch. 15-16 conventional) → <span class="text-emerald-400 font-semibold">Conventional / Fill-in</span></p>
+                <p>📗 <strong>Paper 2 questions</strong> (Ch. 16, S3 Probability J19) → <span class="text-amber-400 font-semibold">Multiple Choice</span></p>
+                <p>📙 <strong>TSA questions</strong> (3B12 Introduction to Probability) → <span class="text-emerald-400 font-semibold">Fill-in (answer-sheet style)</span></p>
+            </div>
+            <p class="text-xs text-slate-500 mt-3 text-center italic">
+                Each question appears in the same format as the real paper it comes from.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button onclick="startGame(1)" class="glass-panel rounded-2xl p-6 text-left hover:-translate-y-1 transition duration-300 border-t-4 border-green-500 group relative overflow-hidden">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="font-bold text-xl text-white group-hover:text-green-400 transition">Level 1</h3>
+                    <span class="text-2xl group-hover:scale-110 transition">🟢</span>
+                </div>
+                <p class="text-slate-400 text-sm relative z-10">Introduction to Probability: empirical / relative frequency, listing outcomes (TSA 3B12 + S3 Probability J19).</p>
+            </button>
+
+            <button onclick="startGame(2)" class="glass-panel rounded-2xl p-6 text-left hover:-translate-y-1 transition duration-300 border-t-4 border-amber-500 group relative overflow-hidden">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="font-bold text-xl text-white group-hover:text-amber-400 transition">Level 2</h3>
+                    <span class="text-2xl group-hover:scale-110 transition">🟡</span>
+                </div>
+                <p class="text-slate-400 text-sm relative z-10">More about Probability: drawing with / without replacement, queues, turn-taking games (DSE Paper 2 Ch. 16 · MC only).</p>
+            </button>
+
+            <button onclick="startGame(3)" class="glass-panel rounded-2xl p-6 text-left hover:-translate-y-1 transition duration-300 border-t-4 border-red-500 group relative overflow-hidden">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="font-bold text-xl text-white group-hover:text-red-400 transition">Level 3</h3>
+                    <span class="text-2xl group-hover:scale-110 transition">🔴</span>
+                </div>
+                <p class="text-slate-400 text-sm relative z-10">Conventional multi-part (a)(b) problems: combinations, queue arrangements, two-stage drawing (DSE Paper 1 Ch. 15-16 · fill-in).</p>
+            </button>
+        </div>
+    </div>
+
+    <div id="game-screen" class="hidden w-full max-w-2xl flex flex-col gap-4">
+
+        <div class="flex justify-between items-center bg-slate-800 rounded-full px-6 py-3 shadow-lg border border-slate-700">
+            <div class="font-bold text-amber-400" id="level-indicator">Level 1</div>
+            <div class="flex gap-1 text-xl" id="lives-container">
+                <!-- Hearts injected here -->
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="text-slate-300 font-mono bg-slate-900 px-3 py-1 rounded-full text-sm font-semibold">
+                    Q: <span id="q-counter">1/5</span>
+                </div>
+                <div class="text-amber-300 font-mono bg-slate-900 border border-amber-500/30 px-3 py-1 rounded-full text-sm font-semibold">
+                    ⭐ <span id="live-score">0</span>
+                </div>
+            </div>
+            <button onclick="quitGame()" class="text-slate-500 hover:text-red-400 transition text-xs font-bold uppercase tracking-wider">
+                Abort
+            </button>
+        </div>
+
+        <div class="glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl text-center min-h-[350px] flex flex-col relative w-full overflow-hidden" id="main-game-area">
+
+            <div class="w-full flex justify-between items-center mb-2 border-b border-slate-700/50 pb-3">
+                <div class="flex flex-col text-left">
+                    <h3 class="text-slate-300 text-sm font-semibold" id="question-instruction">Solve the probability problem:</h3>
+                    <div class="flex gap-3 flex-wrap">
+                        <span class="text-xs text-amber-400 font-semibold" id="format-hint"></span>
+                        <span class="text-xs text-sky-400 font-semibold" id="paper-hint"></span>
+                        <span class="text-xs text-emerald-400 font-semibold" id="part-label"></span>
+                    </div>
+                </div>
+                <div class="flex gap-2 shrink-0">
+                    <button onclick="askAITutor()" class="text-[10px] sm:text-xs bg-purple-600/20 text-purple-300 border border-purple-500/30 px-3 py-1.5 rounded-full hover:bg-purple-600/40 transition font-bold active:scale-95 flex items-center gap-1">
+                        Ask AI ✨
+                    </button>
+                    <button onclick="toggleCheatSheet()" class="text-[10px] sm:text-xs bg-blue-600/20 text-blue-400 border border-blue-500/30 px-3 py-1.5 rounded-full hover:bg-blue-600/40 transition active:scale-95 flex items-center gap-1">
+                        Formulas 💡
+                    </button>
+                </div>
+            </div>
+
+            <div id="question-display" class="text-lg sm:text-xl text-white mb-6 overflow-x-auto py-6 min-h-[100px] text-left leading-relaxed max-w-xl mx-auto">
+                <!-- Question renders here -->
+            </div>
+
+            <div id="mc-options" class="grid grid-cols-1 sm:grid-cols-2 gap-4 hidden w-full mt-auto">
+                <button onclick="submitMCAnswer(0)" class="option-btn bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl p-4 text-xl transition-all shadow-md active:scale-95 min-h-[64px] flex items-center justify-center"></button>
+                <button onclick="submitMCAnswer(1)" class="option-btn bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl p-4 text-xl transition-all shadow-md active:scale-95 min-h-[64px] flex items-center justify-center"></button>
+                <button onclick="submitMCAnswer(2)" class="option-btn bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl p-4 text-xl transition-all shadow-md active:scale-95 min-h-[64px] flex items-center justify-center"></button>
+                <button onclick="submitMCAnswer(3)" class="option-btn bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl p-4 text-xl transition-all shadow-md active:scale-95 min-h-[64px] flex items-center justify-center"></button>
+            </div>
+
+            <div id="conventional-area" class="hidden flex flex-col items-center gap-4 w-full max-w-md mx-auto mt-auto">
+                <p class="text-[11px] text-slate-400 text-center leading-tight">
+                    Type a fraction like <span class='font-mono text-emerald-400'>13/81</span> or a decimal like <span class='font-mono text-emerald-400'>0.160</span>.<br>
+                    Fractions are reduced automatically — <span class='font-mono text-emerald-400'>3/6</span> and <span class='font-mono text-emerald-400'>1/2</span> are the same answer.
+                </p>
+
+                <div class="flex gap-2 w-full">
+                    <input type="text" id="conventional-input" placeholder="e.g. 13/81" class="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-lg font-mono text-white outline-none focus:border-amber-500 transition shadow-inner" oninput="updateLivePreview()" onkeypress="handleEnter(event)">
+                    <button onclick="submitFillAnswer()" class="bg-amber-600 hover:bg-amber-500 text-white font-bold px-6 rounded-lg text-base transition shadow-md active:scale-95">
+                        Submit
+                    </button>
+                </div>
+
+                <div id="helper-buttons" class="flex flex-wrap gap-2 justify-center w-full mt-1">
+                    <!-- dynamically injected helper buttons -->
+                </div>
+
+                <div class="w-full p-4 bg-slate-900/60 border border-slate-700 rounded-lg text-center min-h-[80px] flex flex-col justify-center items-center mt-2">
+                    <span class="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1">Live Answer Preview</span>
+                    <div id="math-preview" class="text-xl text-slate-300 min-h-[30px] flex items-center justify-center">Empty</div>
+                </div>
+            </div>
+
+            <!-- Level 3: multi-part (a)(b) blocks, each with its own question + answer area -->
+            <div id="l3-area" class="hidden w-full mt-auto">
+                <div id="l3-blocks" class="flex flex-col gap-4"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- CHEAT SHEET MODAL -->
+    <div id="cheat-modal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-opacity" onclick="if(event.target===this) toggleCheatSheet()">
+        <div class="glass-panel p-6 rounded-2xl border border-slate-600 max-w-sm w-full shadow-2xl">
+            <h3 class="text-2xl font-bold text-amber-400 mb-4 border-b border-slate-700 pb-2">Probability Formulas</h3>
+            <ul class="space-y-4 text-lg font-serif">
+                <li class="flex justify-between items-center"><span class="text-slate-300 text-sm font-sans">Probability:</span> <span class="bg-slate-900/80 px-2 py-1 rounded text-white border border-slate-700">\(P(E) = \dfrac{\text{favourable}}{\text{total}}\)</span></li>
+                <li class="flex justify-between items-center"><span class="text-slate-300 text-sm font-sans">Empirical prob.:</span> <span class="bg-slate-900/80 px-2 py-1 rounded text-white border border-slate-700">\(\dfrac{\text{frequency}}{\text{total frequency}}\)</span></li>
+                <li class="flex justify-between items-center"><span class="text-slate-300 text-sm font-sans">Complement:</span> <span class="bg-slate-900/80 px-2 py-1 rounded text-white border border-slate-700">\(P(\text{not }E) = 1 - P(E)\)</span></li>
+                <li class="flex justify-between items-center"><span class="text-slate-300 text-sm font-sans">At least one:</span> <span class="bg-slate-900/80 px-2 py-1 rounded text-white border border-slate-700">\(1 - P(\text{none})\)</span></li>
+                <li class="flex justify-between items-center"><span class="text-slate-300 text-sm font-sans">Combination:</span> <span class="bg-slate-900/80 px-2 py-1 rounded text-white border border-slate-700">\(C(n,r) = \dfrac{n!}{r!(n-r)!}\)</span></li>
+                <li class="flex justify-between items-center"><span class="text-slate-300 text-sm font-sans">Drawing all at once:</span> <span class="bg-slate-900/80 px-2 py-1 rounded text-white border border-slate-700">\(\dfrac{C(a,r)C(b,k-r)}{C(a+b,k)}\)</span></li>
+                <li class="flex justify-between items-center"><span class="text-slate-300 text-sm font-sans">Queue (no adjacent):</span> <span class="bg-slate-900/80 px-2 py-1 rounded text-white border border-slate-700">\(\dfrac{C(B+1,g)\cdot g!\cdot B!}{(B+g)!}\)</span></li>
+                <li class="flex justify-between items-center"><span class="text-slate-300 text-sm font-sans">Independent events:</span> <span class="bg-slate-900/80 px-2 py-1 rounded text-white border border-slate-700">\(P(A \text{ and } B) = P(A)\cdot P(B)\)</span></li>
+                <li class="flex justify-between items-center"><span class="text-slate-300 text-sm font-sans">Turn-taking game:</span> <span class="bg-slate-900/80 px-2 py-1 rounded text-white border border-slate-700">\(P = \dfrac{s}{1-r}\)</span></li>
+            </ul>
+            <button onclick="toggleCheatSheet()" class="mt-8 w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-lg active:scale-95 transition">Close</button>
+        </div>
+    </div>
+
+    <!-- AI TUTOR MODAL -->
+    <div id="ai-tutor-modal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-opacity" onclick="if(event.target===this) closeAITutor()">
+        <div class="glass-panel border border-purple-500/50 max-w-lg w-full rounded-2xl shadow-2xl p-6 flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-3 mb-4">
+                <h3 class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-300 flex items-center gap-2">
+                    <span>✨ AI Tutor (HKDSE 導師)</span>
+                </h3>
+                <button onclick="closeAITutor()" class="text-slate-400 hover:text-white text-2xl font-bold">&times;</button>
+            </div>
+
+            <div id="ai-content-area" class="flex-1 overflow-y-auto pr-2 space-y-4 text-slate-200 text-sm sm:text-base leading-relaxed">
+                <!-- AI tutor contents rendered here -->
+            </div>
+
+            <button onclick="closeAITutor()" class="mt-6 w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 rounded-xl transition active:scale-95">
+                Got it, thanks!
+            </button>
+        </div>
+    </div>
+
+    <!-- WRONG ANSWER TECHNIQUE REFLECTION MODAL -->
+    <div id="wrong-reflection-modal" class="fixed inset-0 bg-black/90 hidden flex items-center justify-center z-[60] p-4 backdrop-blur-md transition-opacity">
+        <div class="glass-panel border-2 border-red-500/40 max-w-md w-full rounded-2xl shadow-2xl p-6 flex flex-col">
+            <div class="flex items-center gap-3 mb-4 border-b border-slate-700 pb-3">
+                <span class="text-3xl">🛑</span>
+                <h3 class="text-xl font-bold text-red-400">Wait! Let's Reflect</h3>
+            </div>
+            <p class="text-slate-300 mb-6 text-sm">You got that one wrong. Before moving on, which <strong>technique</strong> was primarily needed to solve that question?</p>
+
+            <div class="space-y-3">
+                <button onclick="submitWrongReflection('freq_table')" class="w-full text-left px-4 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl transition active:scale-95 flex items-center justify-between group">
+                    <span class="text-sm font-semibold text-slate-200 group-hover:text-white">Frequency / Relative Frequency</span>
+                    <span class="font-serif bg-slate-900 px-2 py-1 rounded text-xs text-amber-300">\(\dfrac{\text{frequency}}{\text{total frequency}}\)</span>
+                </button>
+                <button onclick="submitWrongReflection('list_outcomes')" class="w-full text-left px-4 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl transition active:scale-95 flex items-center justify-between group">
+                    <span class="text-sm font-semibold text-slate-200 group-hover:text-white">List Outcomes (Sample Space)</span>
+                    <span class="font-serif bg-slate-900 px-2 py-1 rounded text-xs text-amber-300">draw the outcome table</span>
+                </button>
+                <button onclick="submitWrongReflection('fraction_count')" class="w-full text-left px-4 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl transition active:scale-95 flex items-center justify-between group">
+                    <span class="text-sm font-semibold text-slate-200 group-hover:text-white">\(P =\) Favourable ÷ Total</span>
+                    <span class="font-serif bg-slate-900 px-2 py-1 rounded text-xs text-amber-300">then solve for the unknown</span>
+                </button>
+                <button onclick="submitWrongReflection('combinations')" class="w-full text-left px-4 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl transition active:scale-95 flex items-center justify-between group">
+                    <span class="text-sm font-semibold text-slate-200 group-hover:text-white">Combinations \(C(n,r)\)</span>
+                    <span class="font-serif bg-slate-900 px-2 py-1 rounded text-xs text-amber-300">\(\dfrac{C(a,r)C(b,k-r)}{C(a+b,k)}\)</span>
+                </button>
+                <button onclick="submitWrongReflection('arrangement')" class="w-full text-left px-4 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl transition active:scale-95 flex items-center justify-between group">
+                    <span class="text-sm font-semibold text-slate-200 group-hover:text-white">Queue / Arrangement</span>
+                    <span class="font-serif bg-slate-900 px-2 py-1 rounded text-xs text-amber-300">gaps + blocks</span>
+                </button>
+                <button onclick="submitWrongReflection('turn_game')" class="w-full text-left px-4 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl transition active:scale-95 flex items-center justify-between group">
+                    <span class="text-sm font-semibold text-slate-200 group-hover:text-white">Turn-taking Game</span>
+                    <span class="font-serif bg-slate-900 px-2 py-1 rounded text-xs text-amber-300">\(P = \dfrac{s}{1-r}\)</span>
+                </button>
+                <button onclick="submitWrongReflection('binomial')" class="w-full text-left px-4 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl transition active:scale-95 flex items-center justify-between group">
+                    <span class="text-sm font-semibold text-slate-200 group-hover:text-white">Independent Trials (Binomial)</span>
+                    <span class="font-serif bg-slate-900 px-2 py-1 rounded text-xs text-amber-300">\(C(n,k)p^k(1-p)^{n-k}\)</span>
+                </button>
+                <button onclick="submitWrongReflection('use_a')" class="w-full text-left px-4 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl transition active:scale-95 flex items-center justify-between group">
+                    <span class="text-sm font-semibold text-slate-200 group-hover:text-white">Use the Part (a) Result</span>
+                    <span class="font-serif bg-slate-900 px-2 py-1 rounded text-xs text-amber-300">substitute the earlier part</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- WRONG ANSWER FEEDBACK MODAL -->
+    <div id="feedback-toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 bg-red-950/90 backdrop-blur-md border-2 border-red-500 text-red-100 px-6 py-4 rounded-xl shadow-2xl hidden z-50 text-center max-w-sm w-full transition-all">
+        <div class="flex items-center justify-center gap-2 mb-1">
+            <span class="text-2xl">❌</span>
+            <p class="font-bold text-lg">Incorrect Answer!</p>
+        </div>
+        <p class="text-sm text-red-300 mt-1">Count the favourable outcomes and the total first — is it drawing WITH or WITHOUT replacement?</p>
+    </div>
+
+    <script>
+        // Deployed Google Apps Script Web App URL
+        const GOOGLE_SCRIPT_URL =
+            'https://script.google.com/macros/s/AKfycbxpmwJ_BmXakqRHiHr5N57z6P4GPI_m_vkyIy7T9chnO4pbuH_aVrD0RUsj5nlYOOwY/exec';
+
+        let studentProfile = null;
+        let badgeRecords = { level1: false, level2: false, level3: false };
+        let currentLevel = 1;
+        let currentQuestionIndex = 0;
+        let lives = 5;
+        let currentQuestions = [];
+        let currentQuestionMode = 'mc'; // state for current specific question: paper-driven ('Paper 2'=mc, else fill)
+        let currentSets = [];    // Level 3: array of question sets (each set = array of parts)
+        let currentSetIndex = 0;
+        let activePart = null;   // the part currently being answered (for reflection / AI tutor)
+
+        // --- SCORE BOARD ---
+        // Full marks per level, marks deducted per heart lost. Marks accumulate across replays.
+        const MARKS = {
+            1: { full: 10, perHeart: 1 },
+            2: { full: 15, perHeart: 1 },
+            3: { full: 15, perHeart: 1 }
+        };
+        // Hearts per level
+        const LEVEL_LIVES = { 1: 5, 2: 5, 3: 5 };
+        // Questions per game (Level 3 = question sets)
+        const NUM_QUESTIONS = 5;
+        const LEVEL3_SETS = 5;
+        let scoreTotals = { level1: 0, level2: 0, level3: 0 };
+
+        // Tracking variables for correct percentage
+        let levelStats = {
+            level1: { correct: 0, total: 0 },
+            level2: { correct: 0, total: 0 },
+            level3: { correct: 0, total: 0 }
+        };
+
+        // ─────────────────────────────────────────────────────────────────────
+        // MATH GENERATOR ENGINE — Probability
+        //
+        // Level 1 (green): 2021-2025 S3 TSA Q&A 3B12 Introduction to Probability
+        //   (Q178-190) + sort_paper1.pdf J19 S3 Probability (Q291-300, shown as
+        //   MC like the sort_paper2.pdf J19 section).
+        //   t0  Q178/179  empirical probability from a frequency table
+        //   t1  Q180/183  relative frequency of a composite event
+        //   t2  Q181/182  relative frequency with one large frequency
+        //   t3  Q186/188  two-activity outcome listing → P(one combination)
+        //   t4  Q187  two players show a gesture → P(tie)
+        //   t5  Q189  two MC questions answered randomly → P(at least 1 correct)
+        //   t6  Q190  two-digit number from 3 digits → P(multiple of 4)
+        //   t7  J19 Q295 (18 P1 Q4)  P(red)=fraction → find n  (Paper 2 · MC)
+        //   t8  J19 Q292 (15 P1 Q3)  two bags of cards → P(sum < k)  (Paper 2 · MC)
+        //   t9  J19 Q300 (24 P1 Q9)  P(event)=fraction → find k  (Paper 2 · MC)
+        //
+        // Level 2 (amber): sort_paper2.pdf Ch. 16 More about Probability
+        //   (Q271-286) — Multiple Choice only.
+        //   t0  Q271 two bags → P(different colours)
+        //   t1  Q272 2 girls + b boys queue → P(together)
+        //   t2  Q273 Mary just after Tom → P
+        //   t3  Q274 draws without replacement → P(exactly 3 draws)
+        //   t4  Q275 bag chosen then ball → P(green)
+        //   t5  Q276 cans → P(at least 2 tea)
+        //   t6  Q277/284 dart 4 throws → binomial (at most 3 / at least 2)
+        //   t7  Q278 turn-taking die → P(John gets 6)
+        //   t8  Q279 cups → P(at least 1 blue)
+        //   t9  Q280/285 3 independent questions → at most 2 / at least 1 correct
+        //   t10 Q281 books → P(at most 3 Chinese)
+        //   t11 Q282 draws until black → P(at most 3 draws)
+        //   t12 Q283 boy/girl turns with replacement → P(girl draws white)
+        //   t13 Q286 juice cans → P(at most 3 grape)
+        //
+        // Level 3 (red): sort_paper1.pdf Ch. 15-16 conventional (a)(b)/(a)(b)(c) sets.
+        //   setA Q102 committee → (a) exactly 2 (b) different numbers
+        //   setB Q106 bowls → (a) exactly 2 red (b) at least 2 red
+        //   setC Q103 boys & girls → (a) all boys (b) at least 1 boy & 1 girl
+        //   setD Q104 departments → (a) 4 different depts (b) at most 3 depts
+        //   setE Q105 cups → (a) at least 4 white (b) at least 3 blue
+        //   setF Q107/110 queue → (a) number of queues (b) P(no adjacent)
+        //   setG Q109/114 three-colour plates → (a) same colour (b) different
+        //   setH Q113 red/white cups → (a) exactly 1 white (b) at most 3 red
+        //   setI Q112 two-stage bag → (a) P(both red) (b) P(3 same colour)
+        //   setJ Q100/101 counting → (a) count (b) count / probability
+        //   setK Q108 pens → (a) exactly 4 (b) exactly 3 (c) not more than 2 green
+        // ─────────────────────────────────────────────────────────────────────
+        const MathGen = {
+            rand: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
+            shuffle: (array) => [...array].sort(() => Math.random() - 0.5),
+            gcd: function (a, b) { a = Math.abs(a); b = Math.abs(b); return b ? this.gcd(b, a % b) : a; },
+            comb: function (n, r) {
+                if (r < 0 || r > n) return 0;
+                r = Math.min(r, n - r);
+                let v = 1;
+                for (let i = 0; i < r; i++) v = v * (n - i) / (i + 1);
+                return Math.round(v);
+            },
+            fact: function (n) { let v = 1; for (let i = 2; i <= n; i++) v *= i; return v; },
+            // reduce a fraction [n, d]
+            red: function (n, d) {
+                const g = this.gcd(n, d) || 1;
+                n /= g; d /= g;
+                if (d < 0) { n = -n; d = -d; }
+                return [n, d];
+            },
+            // answer string for fill-in ("13/81" or "7")
+            fstr: function (n, d) { const r = this.red(n, d); return r[1] === 1 ? String(r[0]) : r[0] + '/' + r[1]; },
+            // TeX for MC options / answer lines
+            ftex: function (n, d) { const r = this.red(n, d); return r[1] === 1 ? String(r[0]) : '\\dfrac{' + r[0] + '}{' + r[1] + '}'; },
+            // nearest fraction to a float (denominator ≤ 2000)
+            bestFrac: function (x) {
+                const sign = x < 0 ? -1 : 1;
+                x = Math.abs(x);
+                let bn = 0, bd = 1, be = Infinity;
+                for (let d = 1; d <= 2000; d++) {
+                    const n = Math.round(x * d);
+                    const e = Math.abs(n / d - x);
+                    if (e < be) { be = e; bn = n; bd = d; if (e < 1e-12) break; }
+                }
+                return [sign * bn, bd];
+            },
+            // 4 unique fraction options, shuffled, wrapped in $ ... $
+            fracOpts: function (cn, cd, cands) {
+                const seen = new Set();
+                const out = [];
+                const push = (n, d) => {
+                    if (isNaN(n) || isNaN(d) || d === 0 || n === 0) return;
+                    const r = this.red(n, d);
+                    const key = r[0] + '/' + r[1];
+                    if (seen.has(key) || out.length >= 4) return;
+                    seen.add(key);
+                    out.push(this.ftex(r[0], r[1]));
+                };
+                push(cn, cd);
+                for (const c of cands) {
+                    if (out.length >= 4) break;
+                    if (Array.isArray(c)) push(c[0], c[1]);
+                    else { const r = this.bestFrac(c); push(r[0], r[1]); }
+                }
+                // question-specific fallbacks (derived from the correct fraction) so two
+                // different questions never end up with the same option set
+                const fall = this.fracFallbacks(cn, cd);
+                let fi = 0, guard = 0;
+                while (out.length < 4 && guard < 60) {
+                    if (fi < fall.length) { push(fall[fi][0], fall[fi][1]); fi++; }
+                    else push(this.rand(2, 9), this.rand(10, 20));
+                    guard++;
+                }
+                return this.opts(out);
+            },
+            // distinct fractions close to n/d (all in (0,1), none equal to n/d)
+            fracFallbacks: function (n, d) {
+                const r = this.red(n, d);
+                n = r[0]; d = r[1];
+                const list = [];
+                const push = (a, b) => {
+                    if (isNaN(a) || isNaN(b) || b <= 0 || a <= 0 || a >= b) return;
+                    list.push([a, b]);
+                };
+                push(d - n, d);
+                push(n, d + 1);
+                push(n + 1, d + 1);
+                push(d - n + 1, d + 1);
+                push(n, d + 2);
+                push(n + 2, d + 2);
+                push(d - n, d + 1);
+                push(n + 1, d + 2);
+                return list;
+            },
+            // 4 unique integer options
+            numOpts: function (correct, cands) {
+                const out = [correct];
+                for (const c of cands) {
+                    if (out.length >= 4) break;
+                    const v = Math.round(c);
+                    if (!isNaN(v) && v !== correct && out.indexOf(v) === -1) out.push(v);
+                }
+                const steps = [1, -1, 2, -2, 3, -3, 4, -4, 5, -5];
+                let i = 0;
+                while (out.length < 4) {
+                    const v = correct + steps[i % steps.length];
+                    i++;
+                    if (out.indexOf(v) === -1) out.push(v);
+                }
+                return this.opts(out.map(String));
+            },
+            // 4 unique decimal options (4 d.p.)
+            decOpts: function (correct, cands) {
+                const out = [correct];
+                for (const c of cands) {
+                    if (out.length >= 4) break;
+                    const s = c.toFixed(4);
+                    if (s !== correct && out.indexOf(s) === -1) out.push(s);
+                }
+                const steps = [1, -1, 2, -2, 3, -3, 4, -4];
+                let i = 0;
+                while (out.length < 4) {
+                    const s = (parseFloat(correct) + steps[i % steps.length] * 0.0001).toFixed(4);
+                    i++;
+                    if (s !== correct && out.indexOf(s) === -1) out.push(s);
+                }
+                return this.opts(out);
+            },
+            // Wrap TeX strings into shuffled $ ... $ options
+            opts: function (texArr) {
+                return this.shuffle(texArr.map(t => '$ ' + t + ' $'));
+            },
+            // small frequency table HTML
+            table: function (headRow, freqRow) {
+                let h = '<table class="stat-table"><tbody><tr>';
+                for (const c of headRow) h += '<th>' + c + '</th>';
+                h += '</tr><tr><td>Frequency</td>';
+                for (const c of freqRow) h += '<td>' + c + '</td>';
+                h += '</tr></tbody></table>';
+                return h;
+            },
+
+            // ════════════ LEVEL 1 — TSA 3B12 + J19 S3 Probability ════════════
+            generateL1: function (typeIdx) {
+                const t = typeIdx % 10;
+                const instruction = "Solve the probability problem:";
+                let text = '', answerStr = '', mcTex = '', optsTex = [], law = 'freq_table', src = '', paper = 'TSA';
+
+                if (t === 0) {
+                    // TSA 3B12 Q178/Q179 — empirical probability from a frequency table
+                    const scene = this.rand(0, 1);
+                    let who, intro, verb, cats, phrases, ti;
+                    if (scene === 0) {
+                        who = ['Chris', 'Wilson', 'Kelvin'][this.rand(0, 2)];
+                        intro = who + ' draws a character from a computer game';
+                        verb = 'draws';
+                        cats = ['Animal', 'Alien', 'Human', 'Other'];
+                        phrases = ['an animal', 'an alien', 'a human'];
+                        ti = this.rand(0, 2);
+                    } else {
+                        who = ['Ryan', 'Betty', 'Mary'][this.rand(0, 2)];
+                        intro = who + ' plays songs with a music player';
+                        verb = 'plays';
+                        cats = ['Pop Song', 'Rhyme', 'Nursery Rhyme', 'Symphony', 'Cantonese Opera'];
+                        phrases = ['a pop song', 'a rhyme', 'a nursery rhyme', 'a symphony', 'a Cantonese opera'];
+                        ti = this.rand(0, 4);
+                    }
+                    const counts = [];
+                    const pool = [3, 4, 5, 8, 10, 12, 15, 20, 25, 30, 40];
+                    while (counts.length < cats.length) {
+                        const c = pool[this.rand(0, pool.length - 1)];
+                        if (counts.indexOf(c) === -1) counts.push(c);
+                    }
+                    const T = counts.reduce((a, b) => a + b, 0);
+                    text = intro + '. The table below shows the frequencies of the outcomes.' + this.table(cats, counts) +
+                        `Find the empirical probability that ${who} ${verb} ${phrases[ti]}${scene === 0 ? ' from the game' : ' with the music player'}.`;
+                    answerStr = this.fstr(counts[ti], T);
+                    mcTex = this.ftex(counts[ti], T);
+                    const cands = [];
+                    for (let i = 0; i < counts.length; i++) if (i !== ti) cands.push([counts[i], T]);
+                    optsTex = this.fracOpts(counts[ti], T, cands);
+                    src = scene === 0 ? 'TSA 3B12 2021 Q178' : 'TSA 3B12 2022 Q179';
+                } else if (t === 1) {
+                    // TSA 3B12 Q180/Q183 — relative frequency of a composite event
+                    const variant = this.rand(0, 1);
+                    if (variant === 0) {
+                        const outcomes = [1, 2, 3, 4, 5, 6];
+                        const counts = [];
+                        for (let i = 0; i < 6; i++) counts.push(this.rand(5, 30));
+                        const T = counts.reduce((a, b) => a + b, 0);
+                        const fav = counts[1] + counts[3] + counts[5];
+                        text = `Wilson throws a dice ${T} times. The outcomes are shown as follows.` + this.table(outcomes, counts) +
+                            `Find the relative frequency of Wilson getting an even number.`;
+                        answerStr = this.fstr(fav, T);
+                        mcTex = this.ftex(fav, T);
+                        optsTex = this.fracOpts(fav, T, [[counts[0], T], [counts[2], T], [counts[4], T]]);
+                        src = 'TSA 3B12 2023 Q180';
+                    } else {
+                        const outcomes = ['No coins face up', 'Only 1 coin faces up', 'Only 2 coins face up', '3 coins face up'];
+                        const counts = [];
+                        for (let i = 0; i < 4; i++) counts.push(this.rand(5, 45));
+                        const T = counts.reduce((a, b) => a + b, 0);
+                        const fav = counts[2];
+                        text = `Wilson throws three coins at the same time. He conducted this experiment ${T} times and the outcomes are shown as follows.` + this.table(outcomes, counts) +
+                            `Find the relative frequency of Wilson having only 2 coins facing up.`;
+                        answerStr = this.fstr(fav, T);
+                        mcTex = this.ftex(fav, T);
+                        optsTex = this.fracOpts(fav, T, [[counts[0], T], [counts[1], T], [counts[3], T]]);
+                        src = 'TSA 3B12 2024 Q183';
+                    }
+                } else if (t === 2) {
+                    // TSA 3B12 Q181/Q182 — relative frequency with one large frequency
+                    const variant = this.rand(0, 1);
+                    const x = this.rand(0, 2), y = this.rand(1, 3), N = 500 * this.rand(1, 4);
+                    const T = x + N + y;
+                    if (variant === 0) {
+                        text = `The following table shows the service status of trains and their corresponding frequency at a station yesterday.` +
+                            this.table(['Left ahead of time', 'Left on time', 'Left behind schedule'], [x, N, y]) +
+                            `Find the relative frequency of the service status "left behind schedule" at the station yesterday.`;
+                        answerStr = this.fstr(y, T);
+                        mcTex = this.ftex(y, T);
+                        optsTex = this.fracOpts(y, T, [[x, T], [N, T], [x + y, T]]);
+                        src = 'TSA 3B12 2023 Q181';
+                    } else {
+                        text = `The following table shows the personal vaccination history and the corresponding frequency of people who reserved a booking at a vaccination clinic yesterday.` +
+                            this.table(['Never vaccinated', 'Received 1 to 3 doses of vaccine', 'Received more than 3 doses of vaccine'], [x, N, y]) +
+                            `According to the table above, find the relative frequency of the people who received 1 dose or more of vaccine.`;
+                        answerStr = this.fstr(N + y, T);
+                        mcTex = this.ftex(N + y, T);
+                        optsTex = this.fracOpts(N + y, T, [[x, T], [N, T], [y, T]]);
+                        src = 'TSA 3B12 2024 Q182';
+                    }
+                } else if (t === 3) {
+                    // TSA 3B12 Q186/Q188 — outcome listing: one sport + one music
+                    const m = this.rand(2, 3), n = this.rand(3, 5);
+                    const sports = ['long-distance running', 'basketball', 'swimming'].slice(0, m);
+                    const music = ['choir', 'violin class', 'recorder class', 'drama club', 'arts club'].slice(0, n);
+                    const pickS = sports[this.rand(0, m - 1)], pickM = music[this.rand(0, n - 1)];
+                    const who = ['Alice', 'Kelvin', 'Betty'][this.rand(0, 2)];
+                    text = `All Secondary One students at a school must join one sport activity and one music activity. Students can choose one of ${m} sport activities and one of ${n} music activities. ` +
+                        `If ${who} is a Secondary One student of the school, ${who} chooses one sport activity and one music activity randomly. Find the probability that ${who} chooses ${pickS} and ${pickM}.`;
+                    answerStr = this.fstr(1, m * n);
+                    mcTex = this.ftex(1, m * n);
+                    optsTex = this.fracOpts(1, m * n, [[1, m], [1, n], [(m - 1) * (n - 1), m * n]]);
+                    law = 'list_outcomes';
+                    src = 'TSA 3B12 2021 Q186 / 2023 Q188';
+                } else if (t === 4) {
+                    // TSA 3B12 Q187 — two players show one of k gestures → P(tie) = 1/k
+                    const k = this.rand(2, 9);
+                    if (k === 3) {
+                        text = `In the game "Rock-Paper-Scissors", Betty and Peggy each show one of 3 gestures randomly. Find the probability that the next round is a tie.`;
+                        src = 'TSA 3B12 2022 Q187';
+                    } else if (k === 2) {
+                        text = `Amy and Ben each toss a coin once. Each coin shows one of 2 sides randomly. Find the probability that the two coins show the same side.`;
+                        src = 'TSA 3B12 2022 Q187';
+                    } else if (k === 6) {
+                        text = `Two fair dice are thrown once. Each die shows one of 6 numbers randomly. Find the probability that the two dice show the same number.`;
+                        src = 'TSA 3B12 2022 Q187';
+                    } else {
+                        text = `Betty and Peggy each randomly draw one card from cards numbered 1, 2, ..., ${k}. Find the probability that the two cards drawn show the same number.`;
+                        src = 'TSA 3B12 2022 Q187';
+                    }
+                    answerStr = this.fstr(1, k);
+                    mcTex = this.ftex(1, k);
+                    optsTex = this.fracOpts(1, k, [[2, k * k], [1, k * k], [k - 1, k * k]]);
+                    law = 'list_outcomes';
+                } else if (t === 5) {
+                    // TSA 3B12 Q189 — two MC questions answered randomly → P(at least 1 correct)
+                    const k = [2, 3, 4][this.rand(0, 2)];
+                    const letter = k >= 3 ? 'C' : 'B';
+                    text = `Kelvin attempts two multiple-choice questions. For each question, there are ${k} options with one correct answer only. The correct answers for the two questions are both option ${letter}. ` +
+                        `If Kelvin picks one option as his answer for each question randomly, find the probability that Kelvin can answer at least one question correctly.`;
+                    const num = 2 * k - 1, den = k * k;
+                    answerStr = this.fstr(num, den);
+                    mcTex = this.ftex(num, den);
+                    optsTex = this.fracOpts(num, den, [[1, k * k], [(k - 1) * (k - 1), k * k], [1, k]]);
+                    law = 'list_outcomes';
+                    src = 'TSA 3B12 2024 Q189';
+                } else if (t === 6) {
+                    // TSA 3B12 Q190 — two-digit number from 3 digits → P(multiple of 4)
+                    const combos = [[1, 4, 8], [2, 4, 8], [1, 2, 8], [2, 4, 6], [1, 4, 9], [4, 8, 9], [3, 4, 8], [4, 8, 5], [4, 6, 8], [2, 3, 6], [1, 2, 6]];
+                    const d = combos[this.rand(0, combos.length - 1)];
+                    let c = 0;
+                    for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) {
+                        if ((d[a] * 10 + d[b]) % 4 === 0) c++;
+                    }
+                    text = `A two-digit number is formed by the digits ${d[0]}, ${d[1]} and ${d[2]} at random. The digits can be used again. For example: ${d[0]}${d[0]}, ${d[0]}${d[1]}. Find the probability that the two-digit number formed is a multiple of 4.`;
+                    answerStr = this.fstr(c, 9);
+                    mcTex = this.ftex(c, 9);
+                    const cands = [];
+                    for (const v of [c + 1, c - 1, c + 2, c + 3]) {
+                        if (v >= 1 && v <= 8) cands.push([v, 9]);
+                    }
+                    optsTex = this.fracOpts(c, 9, cands);
+                    law = 'list_outcomes';
+                    src = 'TSA 3B12 2025 Q190';
+                } else if (t === 7) {
+                    // J19 Q295 (18 P1 Q4) — P(red) = fraction → find n (Paper 2 · MC)
+                    const scen = [[20, 8, 5], [25, 10, 6], [20, 5, 6], [20, 6, 5], [30, 9, 6], [24, 9, 7]][this.rand(0, 5)];
+                    const total = scen[0], r = scen[1], b = scen[2];
+                    const n = total - r - b;
+                    const pq = this.red(r, total);
+                    paper = 'Paper 2';
+                    text = `A box contains n white balls, ${b} black balls and ${r} red balls. If a ball is randomly drawn from the box, then the probability of drawing a red ball is ${pq[0]}/${pq[1]}. Find the value of n.`;
+                    answerStr = String(n);
+                    mcTex = String(n);
+                    optsTex = this.numOpts(n, [n + 1, n - 1, n + 2, n - 2]);
+                    law = 'fraction_count';
+                    src = 'S3 Probability J19 (18 P1 Q4)';
+                } else if (t === 8) {
+                    // J19 Q292 (15 P1 Q3) — two bags of cards → P(sum < k) (Paper 2 · MC)
+                    const combos = [
+                        [[1, 3, 5, 7], [2, 4, 6, 8, 10], 9],
+                        [[1, 3, 5], [2, 4, 6], 7],
+                        [[2, 4, 6], [1, 3, 5], 8],
+                        [[1, 2, 3], [4, 5, 6], 7],
+                        [[1, 2, 3, 4], [2, 3, 4, 5], 7],
+                        [[2, 4, 6, 8], [1, 3, 5, 7], 9],
+                        [[1, 3, 5, 7, 9], [2, 4, 6, 8], 10],
+                        [[1, 2, 3, 4, 5], [1, 2, 3, 4, 5], 7]
+                    ];
+                    const scen = combos[this.rand(0, combos.length - 1)];
+                    const A = scen[0], B = scen[1], lim = scen[2];
+                    let c = 0;
+                    for (const a of A) for (const b of B) if (a + b < lim) c++;
+                    const den = A.length * B.length;
+                    paper = 'Paper 2';
+                    text = `Bag A contains cards numbered ${A.join(', ')} while bag B contains cards numbered ${B.join(', ')}. ` +
+                        `If one card is randomly drawn from each bag, find the probability that the sum of the two numbers drawn is less than ${lim}.`;
+                    answerStr = this.fstr(c, den);
+                    mcTex = this.ftex(c, den);
+                    const cands = [];
+                    for (const v of [c + 1, c - 1, den - c]) {
+                        if (v > 0 && v < den) cands.push([v, den]);
+                    }
+                    optsTex = this.fracOpts(c, den, cands);
+                    law = 'list_outcomes';
+                    src = 'S3 Probability J19 (15 P1 Q3)';
+                } else {
+                    // J19 Q300 (24 P1 Q9) — P(event) = fraction → find k (Paper 2 · MC)
+                    const scen = [[4, 6], [2, 6], [6, 6], [2, 4], [4, 4], [3, 4], [5, 4], [2, 5]][this.rand(0, 7)];
+                    const F0 = scen[0], k = scen[1];
+                    const T0 = 26 + F0;
+                    const pq = this.red(F0 + k, T0 + k);
+                    paper = 'Paper 2';
+                    text = `The table below shows the distribution of the numbers of keys owned by a group of housewives.` +
+                        this.table([3, 4, 5, 6, 7, 8], [10, 9, 4, 3, F0, 'k']) +
+                        `If a housewife is randomly selected from the group, then the probability that she owns more than 6 keys is ${pq[0]}/${pq[1]}. Find k.`;
+                    answerStr = String(k);
+                    mcTex = String(k);
+                    optsTex = this.numOpts(k, [k + 1, k - 1, k + 2, k - 2]);
+                    law = 'freq_table';
+                    src = 'S3 Probability J19 (24 P1 Q9)';
+                }
+
+                return {
+                    instruction, paper, src,
+                    text, answerStr, mcAnswerStr: mcTex,
+                    options: optsTex,
+                    firstStepLaw: law
+                };
+            },
+
+            // ════════════ LEVEL 2 — Paper 2 Ch. 16 More about Probability ════════════
+            generateL2: function (typeIdx) {
+                const t = typeIdx % 14;
+                const instruction = "Solve the probability problem:";
+                const paper = 'Paper 2';
+                let text = '', answerStr = '', mcTex = '', optsTex = [], src = '', law = 'combinations';
+
+                if (t === 0) {
+                    // Q271 — two bags, one ball from each → P(different colours)
+                    const rA = this.rand(2, 5), gA = this.rand(2, 5), wA = this.rand(2, 5);
+                    const rB = this.rand(2, 5), gB = this.rand(2, 5), yB = this.rand(2, 5);
+                    const TA = rA + gA + wA, TB = rB + gB + yB;
+                    const same = rA * rB + gA * gB;
+                    const num = TA * TB - same, den = TA * TB;
+                    text = `Bag A contains ${rA} red balls, ${gA} green balls and ${wA} white balls while bag B contains ${rB} red balls, ${gB} green balls and ${yB} yellow balls. ` +
+                        `If one ball is drawn randomly from each bag, then the probability that the two balls drawn are of different colours is`;
+                    answerStr = this.fstr(num, den);
+                    mcTex = this.ftex(num, den);
+                    optsTex = this.fracOpts(num, den, [[same, den], [rA * rB, den], [den - rA * rB, den]]);
+                    src = 'Sample P2 Q271';
+                } else if (t === 1) {
+                    // Q272 — 2 girls + b boys queue → P(girls next to each other)
+                    const b = this.rand(4, 12);
+                    text = `If 2 girls and ${b} boys randomly form a queue, find the probability that the two girls are next to each other in the queue.`;
+                    answerStr = this.fstr(2, b + 2);
+                    mcTex = this.ftex(2, b + 2);
+                    optsTex = this.fracOpts(2, b + 2, [[1, b + 2], [b, b + 2], [b + 1, b + 2]]);
+                    law = 'arrangement';
+                    src = 'Sample P2 Q272';
+                } else if (t === 2) {
+                    // Q273 — Mary performs just after Tom among n students
+                    const n = this.rand(8, 12);
+                    text = `Mary, Tom and ${n - 2} other students participate in a solo singing contest. If each participant performs once only and the order of performance is randomly arranged, ` +
+                        `find the probability that Mary performs just after Tom.`;
+                    answerStr = this.fstr(1, n);
+                    mcTex = this.ftex(1, n);
+                    optsTex = this.fracOpts(1, n, [[2, n], [1, n - 1], [1, 2 * n]]);
+                    law = 'arrangement';
+                    src = 'PP P2 Q273';
+                } else if (t === 3) {
+                    // Q274 — draws without replacement until 9 → P(exactly 3 draws)
+                    const a = this.rand(3, 5), b = this.rand(3, 5);
+                    const T = a + b;
+                    const num = a * (a - 1) * b, den = T * (T - 1) * (T - 2);
+                    text = `A box contains ${a} balls numbered 7 or 8 and ${b} balls numbered 9. John repeats drawing one ball at a time randomly from the box without replacement until the number drawn is 9. ` +
+                        `Find the probability that he needs exactly 3 draws.`;
+                    answerStr = this.fstr(num, den);
+                    mcTex = this.ftex(num, den);
+                    optsTex = this.fracOpts(num, den, [[a * b, T * (T - 1)], [b, T], [a, T]]);
+                    src = '12 P2 Q274';
+                } else if (t === 4) {
+                    // Q275 — a bag is chosen, then a ball → P(green)
+                    const r1 = this.rand(2, 6), g1 = this.rand(2, 6);
+                    const r2 = this.rand(2, 6), g2 = this.rand(2, 6);
+                    const T1 = r1 + g1, T2 = r2 + g2;
+                    const num = g1 * T2 + g2 * T1, den = 2 * T1 * T2;
+                    text = `Bag P contains ${r1} red balls and ${g1} green balls while bag Q contains ${r2} red balls and ${g2} green balls. ` +
+                        `If a bag is randomly chosen and then a ball is randomly drawn from the bag, find the probability that a green ball is drawn.`;
+                    answerStr = this.fstr(num, den);
+                    mcTex = this.ftex(num, den);
+                    optsTex = this.fracOpts(num, den, [[g1, T1], [g2, T2], [r1 * T2 + r2 * T1, den]]);
+                    src = '15 P2 Q275';
+                } else if (t === 5) {
+                    // Q276 — coffee & tea cans, choose 4 → P(at least 2 tea)
+                    const c = this.rand(7, 10), te = this.rand(2, 4);
+                    const CT = this.comb(c + te, 4);
+                    const num = this.comb(te, 2) * this.comb(c, 2) + this.comb(te, 3) * this.comb(c, 1) + this.comb(te, 4);
+                    text = `There are ${c} cans of coffee and ${te} cans of tea in a box. If 4 cans are randomly chosen from the box, find the probability that at least 2 cans of tea are chosen.`;
+                    answerStr = this.fstr(num, CT);
+                    mcTex = this.ftex(num, CT);
+                    optsTex = this.fracOpts(num, CT, [[this.comb(te, 2) * this.comb(c, 2), CT], [this.comb(te, 3) * this.comb(c, 1), CT], [this.comb(te, 4), CT]]);
+                    src = '16 P2 Q276';
+                } else if (t === 6) {
+                    // Q277/284 — dart thrown 4 times → binomial
+                    const p = [0.6, 0.7][this.rand(0, 1)];
+                    const q = 1 - p;
+                    const atMost3 = this.rand(0, 1) === 0;
+                    const who = ['Teresa', 'a boy'][this.rand(0, 1)];
+                    const poss = who === 'Teresa' ? 'she' : 'he';
+                    let correct;
+                    if (atMost3) {
+                        correct = (1 - Math.pow(p, 4)).toFixed(4);
+                        text = `When ${who} throws a dart, the probability that ${poss} hits the target is ${p}. If ${who} throws the dart 4 times, find the probability that ${poss} hits the target at most 3 times.`;
+                        src = '17 P2 Q277';
+                    } else {
+                        correct = (1 - Math.pow(q, 4) - 4 * p * Math.pow(q, 3)).toFixed(4);
+                        text = `When ${who} throws a dart, the probability that ${poss} hits the target is ${p}. If ${who} throws the dart 4 times, find the probability that ${poss} hits the target at least 2 times.`;
+                        src = '23 P2 Q284';
+                    }
+                    answerStr = correct;
+                    mcTex = correct;
+                    const cands = atMost3
+                        ? [Math.pow(q, 4), Math.pow(p, 4), 1 - Math.pow(q, 4)]
+                        : [1 - Math.pow(q, 4), Math.pow(q, 4), Math.pow(p, 4) + 4 * Math.pow(p, 3) * q];
+                    optsTex = this.decOpts(correct, cands);
+                    law = 'binomial';
+                } else if (t === 7) {
+                    // Q278 — John & Mary take turns throwing a die until 1 or 6
+                    const variant = this.rand(0, 2);
+                    let num, den;
+                    if (variant === 0) {
+                        num = 3; den = 10;
+                        text = `John and Mary take turns to throw a fair die until one of them gets a number '1' or '6'. John throws the die first. Find the probability that John gets a number '6'.`;
+                    } else if (variant === 1) {
+                        num = 3; den = 5;
+                        text = `John and Mary take turns to throw a fair die until one of them gets a number '1' or '6'. John throws the die first. Find the probability that John wins.`;
+                    } else {
+                        num = 6; den = 11;
+                        text = `John and Mary take turns to throw a fair die until one of them gets a number '6'. John throws the die first. Find the probability that John gets a number '6'.`;
+                    }
+                    answerStr = this.fstr(num, den);
+                    mcTex = this.ftex(num, den);
+                    optsTex = this.fracOpts(num, den, [[1, 2], [1, 6], [den - num, den]]);
+                    law = 'turn_game';
+                    src = '18 P2 Q278';
+                } else if (t === 8) {
+                    // Q279 — cups → P(at least 1 blue)
+                    const g = this.rand(1, 3), b = this.rand(6, 9), r = this.rand(7, 10);
+                    const T = g + b + r, CT = this.comb(T, 6);
+                    const noBlue = this.comb(g + r, 6);
+                    text = `There are ${g} green cups, ${b} blue cups and ${r} red cups in a bag. If 6 cups are randomly drawn from the bag at the same time, find the probability that at least 1 blue cup is drawn.`;
+                    answerStr = this.fstr(CT - noBlue, CT);
+                    mcTex = this.ftex(CT - noBlue, CT);
+                    optsTex = this.fracOpts(CT - noBlue, CT, [[noBlue, CT], [b * this.comb(g + r, 5), CT], [this.comb(b, 2) * this.comb(g + r, 4), CT]]);
+                    src = '19 P2 Q279';
+                } else if (t === 9) {
+                    // Q280/285 — 3 independent questions
+                    const variant = this.rand(0, 1);
+                    if (variant === 0) {
+                        const vals = this.shuffle([3, 4, 5, 6, 7, 8, 9]).slice(0, 3);
+                        const a = vals[0], b = vals[1], c = vals[2];
+                        const den = a * b * c;
+                        text = `There are three questions in a mathematics competition. The probabilities that Susan answers the first question correctly, the second question correctly and the third question correctly are 1/${a}, 1/${b} and 1/${c} respectively. ` +
+                            `The probability that Susan answers at most 2 questions correctly in the competition is`;
+                        answerStr = this.fstr(den - 1, den);
+                        mcTex = this.ftex(den - 1, den);
+                        optsTex = this.fracOpts(den - 1, den, [[1, den], [a * b - 1, a * b], [a * c - 1, a * c]]);
+                        src = '19 P2 Q280';
+                    } else {
+                        const vals = this.shuffle([0.6, 0.7, 0.8, 0.9]).slice(0, 3);
+                        const p1 = vals[0], p2 = vals[1], p3 = vals[2];
+                        const correct = (1 - (1 - p1) * (1 - p2) * (1 - p3)).toFixed(4);
+                        text = `There are three questions in a test. The probabilities that a student answers the first question correctly, the second question correctly and the third question correctly are ${p1}, ${p2} and ${p3} respectively. ` +
+                            `Find the probability that the student answers at least 1 question correctly in this test.`;
+                        answerStr = correct;
+                        mcTex = correct;
+                        optsTex = this.decOpts(correct, [(1 - p1) * (1 - p2) * (1 - p3), p1 * p2 * p3, (1 - p1) * (1 - p2)]);
+                        src = '24 P2 Q285';
+                    }
+                    law = 'binomial';
+                } else if (t === 10) {
+                    // Q281 — Chinese & English books → P(at most 3 Chinese)
+                    const c = this.rand(7, 10), e = this.rand(6, 9);
+                    const CT = this.comb(c + e, 5);
+                    const ge4 = this.comb(c, 4) * e + this.comb(c, 5);
+                    text = `There are ${c} Chinese books and ${e} English books in a box. If 5 books are randomly chosen from the box at the same time, find the probability that at most 3 Chinese books are chosen.`;
+                    answerStr = this.fstr(CT - ge4, CT);
+                    mcTex = this.ftex(CT - ge4, CT);
+                    optsTex = this.fracOpts(CT - ge4, CT, [[ge4, CT], [this.comb(c, 4) * e, CT], [this.comb(c, 5), CT]]);
+                    src = '20 P2 Q281';
+                } else if (t === 11) {
+                    // Q282 — draws until black → P(at most 3 draws)
+                    const r = this.rand(5, 8), y = this.rand(2, 4), b = this.rand(4, 6);
+                    const T = r + y + b;
+                    const o = r + y;
+                    const num = T * (T - 1) * (T - 2) - o * (o - 1) * (o - 2);
+                    const den = T * (T - 1) * (T - 2);
+                    text = `A bag contains ${r} red balls, ${y} yellow balls and ${b} black balls. A child repeats drawing one ball at a time randomly from the bag without replacement until a black ball is drawn. ` +
+                        `Find the probability that the child needs at most three draws.`;
+                    answerStr = this.fstr(num, den);
+                    mcTex = this.ftex(num, den);
+                    optsTex = this.fracOpts(num, den, [[o * (o - 1) * (o - 2), den], [b, T], [T - b, T]]);
+                    src = '21 P2 Q282';
+                } else if (t === 12) {
+                    // Q283 — boy & girl take turns with replacement → P(girl draws white)
+                    const w = this.rand(1, 3), y = this.rand(1, 3), r = this.rand(2, 5);
+                    if (w === y) { y = y === 3 ? 1 : y + 1; }
+                    const T = w + y + r;
+                    const den = T * T - r * r;
+                    const num = r * w;
+                    text = `A box contains ${w} white balls, ${y} yellow balls and ${r} red balls. A boy and a girl take turns to draw one ball randomly from the box with replacement until one of them draws a white ball or a yellow ball. ` +
+                        `The boy draws a ball first. Find the probability that the girl draws a white ball.`;
+                    answerStr = this.fstr(num, den);
+                    mcTex = this.ftex(num, den);
+                    optsTex = this.fracOpts(num, den, [[w * T, den], [r * y, den], [y * T, den]]);
+                    law = 'turn_game';
+                    src = '22 P2 Q283';
+                } else {
+                    // Q286 — juice cans → P(at most 3 grape)
+                    const a = this.rand(8, 10), g = this.rand(4, 5);
+                    const CT = this.comb(a + g, 6);
+                    let ge4 = 0;
+                    for (let j = 4; j <= Math.min(g, 6); j++) ge4 += this.comb(g, j) * this.comb(a, 6 - j);
+                    text = `There are ${a} cans of apple juice and ${g} cans of grape juice in a bag. If 6 cans are randomly chosen from the bag at the same time, find the probability that at most 3 cans of grape juice are chosen.`;
+                    answerStr = this.fstr(CT - ge4, CT);
+                    mcTex = this.ftex(CT - ge4, CT);
+                    optsTex = this.fracOpts(CT - ge4, CT, [[ge4, CT], [this.comb(g, 4) * this.comb(a, 2), CT], [this.comb(g, 5) * this.comb(a, 1), CT]]);
+                    src = '25 P2 Q286';
+                }
+
+                return {
+                    instruction, paper, src,
+                    text, answerStr, mcAnswerStr: mcTex,
+                    options: optsTex,
+                    firstStepLaw: law
+                };
+            },
+
+            // ════════════ LEVEL 3 — Paper 1 Ch. 15-16 conventional (a)(b) sets ════════════
+            generateL3Set: function () {
+                const chosen = this.rand(0, 10);
+                if (chosen === 0) return this.setA();
+                if (chosen === 1) return this.setB();
+                if (chosen === 2) return this.setC();
+                if (chosen === 3) return this.setD();
+                if (chosen === 4) return this.setE();
+                if (chosen === 5) return this.setF();
+                if (chosen === 6) return this.setG();
+                if (chosen === 7) return this.setH();
+                if (chosen === 8) return this.setI();
+                if (chosen === 9) return this.setJ();
+                return this.setK();
+            },
+
+            partF: function (qHtml, n, d, cands, law) {
+                return {
+                    qHtml, answerStr: this.fstr(n, d),
+                    mcAnswerStr: this.ftex(n, d),
+                    options: this.fracOpts(n, d, cands),
+                    firstStepLaw: law
+                };
+            },
+            partN: function (qHtml, ans, cands, law) {
+                return {
+                    qHtml, answerStr: String(ans),
+                    mcAnswerStr: String(ans),
+                    options: this.numOpts(ans, cands),
+                    firstStepLaw: law
+                };
+            },
+
+            // setA — committee: (a) exactly 2 from A  (b) numbers different (Q102, also Q111)
+            setA: function () {
+                const a = this.rand(4, 7), b = this.rand(4, 8);
+                if (a === b) { b = b === 8 ? 7 : b + 1; }
+                const CT = this.comb(a + b, 4);
+                const ex2 = this.comb(a, 2) * this.comb(b, 2);
+                const pa = this.partF(
+                    `A committee consists of ${a} teachers from school A and ${b} teachers from school B. Four teachers are randomly selected from the committee. Find the probability that exactly 2 of the selected teachers are from school A.`,
+                    ex2, CT,
+                    [[CT - ex2, CT], [this.comb(a, 1) * this.comb(b, 3), CT], [this.comb(a, 3) * this.comb(b, 1), CT]],
+                    'combinations'
+                );
+                const pb = this.partF(
+                    `Find the probability that the numbers of selected teachers from school A and school B are different.`,
+                    CT - ex2, CT,
+                    [[ex2, CT], [this.comb(a, 3) * this.comb(b, 1), CT], [this.comb(a, 1) * this.comb(b, 3), CT]],
+                    'use_a'
+                );
+                pa.src = pb.src = 'Sample P1 Q102 / 22 P1 Q111';
+                return [pa, pb];
+            },
+
+            // setB — bowls: (a) exactly 2 red  (b) at least 2 red (Q106)
+            setB: function () {
+                const r = this.rand(5, 7), y = this.rand(5, 7), w = this.rand(2, 4);
+                if (y === r) { y = y === 7 ? 6 : y + 1; }
+                const CT = this.comb(r + y + w, 4);
+                const ex2 = this.comb(r, 2) * this.comb(y + w, 2);
+                const atl2 = ex2 + this.comb(r, 3) * (y + w) + this.comb(r, 4);
+                const pa = this.partF(
+                    `A box contains ${r} red bowls, ${y} yellow bowls and ${w} white bowls. If 4 bowls are randomly drawn from the box at the same time, find the probability that exactly 2 red bowls are drawn.`,
+                    ex2, CT,
+                    [[CT - ex2, CT], [this.comb(r, 3) * (y + w), CT], [this.comb(r, 4), CT]],
+                    'combinations'
+                );
+                const pb = this.partF(
+                    `Find the probability that at least 2 red bowls are drawn.`,
+                    atl2, CT,
+                    [[ex2, CT], [this.comb(r, 3) * (y + w), CT], [this.comb(r, 4), CT]],
+                    'use_a'
+                );
+                pa.src = pb.src = '15 P1 Q106';
+                return [pa, pb];
+            },
+
+            // setC — boys & girls: (a) all boys  (b) at least 1 boy & 1 girl (Q103)
+            setC: function () {
+                const boys = this.rand(15, 18), girls = this.rand(10, 12);
+                const CT = this.comb(boys + girls, 4);
+                const allB = this.comb(boys, 4), allG = this.comb(girls, 4);
+                const pa = this.partF(
+                    `There are ${boys} boys and ${girls} girls in a class. From the class, 4 students are randomly selected to form the class committee. Find the probability that the class committee consists of boys only.`,
+                    allB, CT,
+                    [[CT - allB, CT], [allG, CT], [this.comb(boys, 3) * girls, CT]],
+                    'combinations'
+                );
+                const pb = this.partF(
+                    `Find the probability that the class committee consists of at least 1 boy and 1 girl.`,
+                    CT - allB - allG, CT,
+                    [[allB + allG, CT], [allB, CT], [allG, CT]],
+                    'use_a'
+                );
+                pa.src = pb.src = 'PP P1 Q103';
+                return [pa, pb];
+            },
+
+            // setD — departments: (a) 4 different departments  (b) at most 3 departments
+            setD: function () {
+                const d = this.rand(6, 9), r = this.rand(2, 3);
+                const CT = this.comb(d * r, 4);
+                const diff4 = this.comb(d, 4) * Math.pow(r, 4);
+                const pa = this.partF(
+                    `There are ${d} departments in a company. To form a task group of ${d * r} members, ${r} representatives are nominated by each department. From the task group, 4 members are randomly selected. Find the probability that the 4 selected members are nominated by 4 different departments.`,
+                    diff4, CT,
+                    [[CT - diff4, CT], [this.comb(d, 4) * Math.pow(r, 3), CT], [this.comb(d, 3) * Math.pow(r, 3) * (d * r - 3), CT]],
+                    'combinations'
+                );
+                const pb = this.partF(
+                    `Find the probability that the 4 selected members are nominated by at most 3 different departments.`,
+                    CT - diff4, CT,
+                    [[diff4, CT], [this.comb(d, 4) * Math.pow(r, 3), CT], [this.comb(d, 3) * Math.pow(r, 3) * (d * r - 3), CT]],
+                    'use_a'
+                );
+                pa.src = pb.src = '12 P1 Q104';
+                return [pa, pb];
+            },
+
+            // setE — cups: (a) at least 4 white  (b) at least 3 blue
+            setE: function () {
+                const w = this.rand(4, 5), b = this.rand(10, 12);
+                const CT = this.comb(w + b, 6);
+                const ge4w = this.comb(w, 4) * this.comb(b, 2) + this.comb(w, 5) * this.comb(b, 1);
+                const pa = this.partF(
+                    `A box contains ${w} white cups and ${b} blue cups. If 6 cups are randomly drawn from the box at the same time, find the probability that at least 4 white cups are drawn.`,
+                    ge4w, CT,
+                    [[CT - ge4w, CT], [this.comb(w, 5) * this.comb(b, 1), CT], [this.comb(w, 4) * this.comb(b, 2), CT]],
+                    'combinations'
+                );
+                const pb = this.partF(
+                    `Find the probability that at least 3 blue cups are drawn.`,
+                    CT - ge4w, CT,
+                    [[ge4w, CT], [this.comb(w, 5) * this.comb(b, 1), CT], [this.comb(w, 4) * this.comb(b, 2), CT]],
+                    'use_a'
+                );
+                pa.src = pb.src = '13 P1 Q105';
+                return [pa, pb];
+            },
+
+            // setF — queue: (a) number of queues  (b) P(no minority adjacent) (Q107/Q110)
+            setF: function () {
+                const variant = this.rand(0, 1);
+                if (variant === 0) {
+                    const T = this.rand(6, 8), s = this.rand(2, 3);
+                    const n = T + s;
+                    const fav = this.comb(T + 1, s) * this.fact(s) * this.fact(T);
+                    const pa = this.partN(
+                        `A queue is randomly formed by ${T} teachers and ${s} students. How many different queues can be formed?`,
+                        this.fact(n), [this.fact(n) + 1, this.fact(n) - 1, this.fact(n - 1)], 'arrangement'
+                    );
+                    const pb = this.partF(
+                        `Find the probability that no students are next to each other in the queue.`,
+                        fav, this.fact(n),
+                        [[this.fact(n) - fav, this.fact(n)], [this.comb(T + 1, s), this.fact(n)], [this.fact(T), this.fact(n)]],
+                        'use_a'
+                    );
+                    pa.src = pb.src = '21 P1 Q110';
+                    return [pa, pb];
+                } else {
+                    const b = this.rand(3, 4), g = this.rand(4, 6);
+                    const n = b + g;
+                    const fav = this.comb(g + 1, b) * this.fact(b) * this.fact(g);
+                    const pa = this.partN(
+                        `A queue is randomly formed by ${b} boys and ${g} girls. How many different queues can be formed?`,
+                        this.fact(n), [this.fact(n) + 1, this.fact(n) - 1, this.fact(n - 1)], 'arrangement'
+                    );
+                    const pb = this.partF(
+                        `Find the probability that no boys are next to each other in the queue.`,
+                        fav, this.fact(n),
+                        [[this.fact(n) - fav, this.fact(n)], [this.comb(g + 1, b), this.fact(n)], [this.fact(g), this.fact(n)]],
+                        'use_a'
+                    );
+                    pa.src = pb.src = '16 P1 Q107 / 21 P1 Q110';
+                    return [pa, pb];
+                }
+            },
+
+            // setG — three-colour plates: (a) same colour  (b) different
+            setG: function () {
+                const variant = this.rand(0, 1);
+                if (variant === 0) {
+                    const a = this.rand(2, 3), b = this.rand(6, 8), c = this.rand(8, 10);
+                    const CT = this.comb(a + b + c, 4);
+                    const same = this.comb(a, 4) + this.comb(b, 4) + this.comb(c, 4);
+                    const pa = this.partF(
+                        `In a box, there are ${a} blue plates, ${b} green plates and ${c} purple plates. If 4 plates are randomly selected from the box at the same time, find the probability that 4 plates of the same colour are selected.`,
+                        same, CT,
+                        [[CT - same, CT], [this.comb(b, 4), CT], [this.comb(c, 4), CT]],
+                        'combinations'
+                    );
+                    const pb = this.partF(
+                        `Find the probability that at least 2 plates of different colours are selected.`,
+                        CT - same, CT,
+                        [[same, CT], [this.comb(b, 4), CT], [this.comb(c, 4), CT]],
+                        'use_a'
+                    );
+                    pa.src = pb.src = '20 P1 Q109';
+                    return [pa, pb];
+                } else {
+                    const w = this.rand(6, 9), r = this.rand(3, 5);
+                    const CT = this.comb(w + r + 1, 3);
+                    const same = this.comb(w, 3) + this.comb(r, 3);
+                    const pa = this.partF(
+                        `There are ${w} white plates, ${r} red plates and 1 black plate in a box. If 3 plates are randomly drawn from the box at the same time, find the probability that the colours of the 3 plates drawn are the same.`,
+                        same, CT,
+                        [[CT - same, CT], [this.comb(w, 3), CT], [this.comb(r, 3), CT]],
+                        'combinations'
+                    );
+                    const pb = this.partF(
+                        `Find the probability that the colours of the 3 plates drawn are all different.`,
+                        w * r, CT,
+                        [[w, CT], [r, CT], [w + r, CT]],
+                        'combinations'
+                    );
+                    pa.src = pb.src = '25 P1 Q114';
+                    return [pa, pb];
+                }
+            },
+
+            // setH — red/white cups: (a) exactly 1 white  (b) at most 3 red
+            setH: function () {
+                const r = this.rand(12, 16), w = this.rand(3, 5);
+                const CT = this.comb(r + w, 5);
+                const ex1w = this.comb(w, 1) * this.comb(r, 4);
+                const pa = this.partF(
+                    `In a bag, there are ${r} red cups and ${w} white cups. If 5 cups are randomly drawn from the bag at the same time, find the probability that exactly 1 white cup is drawn.`,
+                    ex1w, CT,
+                    [[CT - ex1w, CT], [this.comb(w, 2) * this.comb(r, 3), CT], [this.comb(w, 3) * this.comb(r, 2), CT]],
+                    'combinations'
+                );
+                const pb = this.partF(
+                    `Find the probability that at most 3 red cups are drawn.`,
+                    CT - ex1w - this.comb(r, 5), CT,
+                    [[ex1w, CT], [this.comb(r, 5), CT], [this.comb(r, 4) * w, CT]],
+                    'use_a'
+                );
+                pa.src = pb.src = '24 P1 Q113';
+                return [pa, pb];
+            },
+
+            // setI — two-stage bag: (a) P(both red from box)  (b) P(3 same colour from bag)
+            setI: function () {
+                const r = this.rand(4, 6), k = this.rand(3, 5);
+                const m = this.rand(7, 9);
+                const CT2 = this.comb(r + k, 2);
+                const bothR = this.comb(r, 2);
+                const oneR = r * k, noR = this.comb(k, 2);
+                const den = CT2 * this.comb(m + 2, 3);
+                const num = bothR * this.comb(m + 2, 3) + oneR * this.comb(m + 1, 3) + noR * this.comb(m, 3);
+                const pa = this.partF(
+                    `In a box, there are ${r} red balls and ${k} black balls. From the box, 2 balls are randomly chosen at the same time. Find the probability that the 2 balls chosen are red.`,
+                    bothR, CT2,
+                    [[CT2 - bothR, CT2], [oneR, CT2], [noR, CT2]],
+                    'combinations'
+                );
+                const pb = this.partF(
+                    `In a bag, there are ${m} red balls. The 2 balls chosen from the box are put into the bag and then 3 balls are randomly chosen at the same time from the bag. Find the probability that the 3 balls chosen are of the same colour.`,
+                    num, den,
+                    [[den - num, den], [bothR * this.comb(m + 2, 3), den], [noR * this.comb(m, 3), den]],
+                    'use_a'
+                );
+                pa.src = pb.src = '23 P1 Q112';
+                return [pa, pb];
+            },
+
+            // setJ — Ch. 15 counting: phone numbers (Q100) / committee (Q101)
+            setJ: function () {
+                const variant = this.rand(0, 1);
+                if (variant === 0) {
+                    const scen = [[8, 4], [7, 3], [6, 3]][this.rand(0, 2)];
+                    const n = scen[0], o = scen[1];
+                    const last = n + 1;
+                    const pa = this.partN(
+                        `An ${n}-digit phone number is formed by a permutation of the digits 2, 3, ..., ${last}. How many different ${n}-digit phone numbers can be formed?`,
+                        this.fact(n), [this.fact(n) + 1, this.fact(n) - 1, this.fact(n - 1)], 'arrangement'
+                    );
+                    const pb = this.partN(
+                        `If the first digit and the last digit of the phone number are odd numbers, how many different ${n}-digit phone numbers can be formed?`,
+                        o * (o - 1) * this.fact(n - 2), [o * (o - 1) * this.fact(n - 2) + 1, o * (o - 1) * this.fact(n - 2) - 1, o * this.fact(n - 1)], 'use_a'
+                    );
+                    pa.src = pb.src = '18 P1 Q100';
+                    return [pa, pb];
+                } else {
+                    const B = this.rand(18, 21), G = this.rand(10, 12);
+                    const CT5 = this.comb(B + G, 5);
+                    const atl = CT5 - this.comb(G, 5);
+                    const pa = this.partN(
+                        `There are ${B} boys and ${G} girls in a class. If 5 students are selected from the class to form a committee consisting of at least 1 boy, how many different committees can be formed?`,
+                        atl, [atl + 1, atl - 1, CT5], 'combinations'
+                    );
+                    const pb = this.partF(
+                        `If a committee of 5 students is randomly selected from the class, find the probability that the committee consists of at least 1 boy.`,
+                        atl, CT5,
+                        [[CT5 - atl, CT5], [this.comb(G, 5), CT5], [this.comb(B, 5), CT5]],
+                        'use_a'
+                    );
+                    pa.src = pb.src = '19 P1 Q101';
+                    return [pa, pb];
+                }
+            },
+
+            // setK — pens: (a) exactly 4 green  (b) exactly 3 green  (c) not more than 2 green (Q108)
+            setK: function () {
+                const g = this.rand(4, 5), b = this.rand(6, 8), k = this.rand(7, 9);
+                const CT = this.comb(g + b + k, 5);
+                const ex4 = this.comb(g, 4) * (b + k);
+                const ex3 = this.comb(g, 3) * this.comb(b + k, 2);
+                const pa = this.partF(
+                    `In a bag, there are ${g} green pens, ${b} blue pens and ${k} black pens. If 5 pens are randomly drawn from the bag at the same time, find the probability that exactly 4 green pens are drawn.`,
+                    ex4, CT,
+                    [[CT - ex4, CT], [ex3, CT], [this.comb(g, 5), CT]],
+                    'combinations'
+                );
+                const pb = this.partF(
+                    `Find the probability that exactly 3 green pens are drawn.`,
+                    ex3, CT,
+                    [[ex4, CT], [this.comb(g, 2) * this.comb(b + k, 3), CT], [this.comb(g, 5), CT]],
+                    'combinations'
+                );
+                const pc = this.partF(
+                    `Find the probability that not more than 2 green pens are drawn.`,
+                    CT - ex4 - ex3, CT,
+                    [[ex4 + ex3, CT], [ex4, CT], [ex3, CT]],
+                    'use_a'
+                );
+                pa.src = pb.src = pc.src = '17 P1 Q108';
+                return [pa, pb, pc];
+            }
+        };
+
+        // --- ANSWER CHECKING (fractions & decimals) ---
+        function parseFracExact(s) {
+            const t = String(s).toLowerCase().replace(/\s+/g, '').replace(/\*/g, '').replace(/[()]/g, '');
+            const m = t.match(/^(-?)(\d+)\/(\d+)$/);
+            if (m) {
+                const n = parseInt(m[2], 10), d = parseInt(m[3], 10);
+                if (d === 0) return null;
+                return { n: m[1] === '-' ? -n : n, d };
+            }
+            if (/^-?\d+(\.\d+)?$/.test(t)) return { dec: parseFloat(t) };
+            return null;
+        }
+
+        function fracEquals(inp, ans) {
+            const fi = parseFracExact(inp), fa = parseFracExact(ans);
+            if (!fi || !fa) return false;
+            if (fi.dec !== undefined || fa.dec !== undefined) {
+                const vi = fi.dec !== undefined ? fi.dec : fi.n / fi.d;
+                const va = fa.dec !== undefined ? fa.dec : fa.n / fa.d;
+                return Math.abs(vi - va) < 1.2e-3;
+            }
+            return fi.n * fa.d === fa.n * fi.d;
+        }
+
+        function checkFillAnswer(cleanInput, q) {
+            const acc = q.acceptList || [q.answerStr];
+            for (const a of acc) {
+                if (fracEquals(cleanInput, a)) return true;
+            }
+            return false;
+        }
+
+        // --- CORE GAME LOGIC ---
+
+        function login() {
+            const sClass = document.getElementById('student-class').value.trim().toUpperCase();
+            const sNo = document.getElementById('student-no').value.trim();
+            const sName = document.getElementById('student-name').value.trim();
+
+            if (!sClass || !sNo || !sName) {
+                showToast("Please fill in all details to start.", "error");
+                return;
+            }
+
+            studentProfile = { class: sClass, no: sNo, name: sName };
+            document.getElementById('display-name').textContent = `Welcome, ${sName}`;
+            document.getElementById('display-class').textContent = sClass;
+            document.getElementById('display-no').textContent = sNo;
+
+            loadScores();
+
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('dashboard-screen').classList.remove('hidden');
+
+            updatePassportUI();
+            showToast(`Welcome aboard, ${sName}!`, "success");
+        }
+
+        function logout() {
+            studentProfile = null;
+            document.getElementById('dashboard-screen').classList.add('hidden');
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('student-class').value = '';
+            document.getElementById('student-no').value = '';
+            document.getElementById('student-name').value = '';
+        }
+
+        function updatePassportUI() {
+            for (let i = 1; i <= 3; i++) {
+                const statusEl = document.getElementById(`badge-status-${i}`);
+                const iconEl = document.getElementById(`badge-icon-${i}`);
+                const cardEl = document.getElementById(`badge-card-${i}`);
+
+                if (badgeRecords[`level${i}`]) {
+                    statusEl.textContent = "Completed ✅";
+                    statusEl.className = "text-sm font-semibold text-green-400";
+                    iconEl.textContent = "🏆";
+                    cardEl.classList.add('border-amber-500');
+                } else {
+                    statusEl.textContent = "Not Attempted";
+                    statusEl.className = "text-sm font-semibold text-slate-500";
+                    iconEl.textContent = "🔒";
+                    cardEl.classList.remove('border-amber-500');
+                }
+            }
+            updateScoreboardUI();
+        }
+
+        // --- SCORE BOARD LOGIC ---
+        function getScoreStorageKey() {
+            if (!studentProfile) return null;
+            return `hkdse_prob_score_${studentProfile.class}_${studentProfile.no}_${studentProfile.name}`;
+        }
+
+        function loadScores() {
+            const key = getScoreStorageKey();
+            scoreTotals = { level1: 0, level2: 0, level3: 0 };
+            if (!key) return;
+            try {
+                const raw = localStorage.getItem(key);
+                if (raw) {
+                    const saved = JSON.parse(raw);
+                    if (saved && typeof saved.level1 === 'number') scoreTotals = saved;
+                }
+            } catch (e) { console.log('loadScores error', e); }
+        }
+
+        function saveScores() {
+            const key = getScoreStorageKey();
+            if (!key) return;
+            try {
+                localStorage.setItem(key, JSON.stringify(scoreTotals));
+            } catch (e) { console.log('saveScores error', e); }
+        }
+
+        function updateScoreboardUI() {
+            document.getElementById('score-1').textContent = scoreTotals.level1;
+            document.getElementById('score-2').textContent = scoreTotals.level2;
+            document.getElementById('score-3').textContent = scoreTotals.level3;
+            document.getElementById('total-marks').textContent = scoreTotals.level1 + scoreTotals.level2 + scoreTotals.level3;
+        }
+
+        // Marks for the CURRENT attempt: full minus (hearts lost × per-heart)
+        function currentAttemptMarks() {
+            const cfg = MARKS[currentLevel];
+            if (!cfg) return 0;
+            const heartsLost = Math.max(0, LEVEL_LIVES[currentLevel] - lives);
+            return Math.max(0, cfg.full - heartsLost * cfg.perHeart);
+        }
+
+        function updateLiveScore() {
+            const el = document.getElementById('live-score');
+            if (el) el.textContent = currentAttemptMarks();
+        }
+
+        function resetBadges() {
+            if(confirm("Are you sure you want to reset your progress and marks?")) {
+                badgeRecords = { level1: false, level2: false, level3: false };
+                levelStats = { level1: { correct: 0, total: 0 }, level2: { correct: 0, total: 0 }, level3: { correct: 0, total: 0 } };
+                scoreTotals = { level1: 0, level2: 0, level3: 0 };
+                saveScores();
+                updatePassportUI();
+                showToast("Progress and marks reset.", "info");
+            }
+        }
+
+        function startGame(level) {
+            currentLevel = level;
+            document.getElementById('dashboard-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+
+            const levelColors = ['text-green-400', 'text-amber-400', 'text-red-400'];
+            document.getElementById('level-indicator').className = `font-bold ${levelColors[level-1]}`;
+            document.getElementById('level-indicator').textContent = `Level ${level}`;
+
+            lives = LEVEL_LIVES[level];
+            currentQuestionIndex = 0;
+            currentQuestions = [];
+            currentSets = [];
+            currentSetIndex = 0;
+            activePart = null;
+            updateLiveScore();
+
+            if (level === 3) {
+                // Level 3: multi-part (a)(b) sets; each set shown as blocks on one page
+                const usedTexts = new Set();
+                const usedOpts = new Set();
+                const usedAns = new Set();
+                for (let i = 0; i < LEVEL3_SETS; i++) {
+                    let parts = null, tKey = null, oKey = null, aKey = null, tries = 0;
+                    do {
+                        parts = MathGen.generateL3Set();
+                        tKey = parts.map(p => p.qHtml).join('|');
+                        oKey = parts.map(p => [...p.options].sort().join('~')).join('|');
+                        aKey = parts.map(p => p.answerStr).join('|');
+                        tries++;
+                    } while ((usedTexts.has(tKey) || usedOpts.has(oKey) || usedAns.has(aKey)) && tries < 100);
+                    usedTexts.add(tKey);
+                    usedOpts.add(oKey);
+                    usedAns.add(aKey);
+                    parts.forEach((part, pi) => {
+                        part.setNo = i + 1;
+                        part.partIdx = pi;
+                        part.partLabel = ['(a)', '(b)', '(c)'][pi];
+                        part.paper = 'Paper 1';
+                        part.done = false;
+                        // Paper 1 questions are Conventional / fill-in only.
+                        part.mode = 'fill';
+                    });
+                    currentSets.push(parts);
+                }
+                updateLivesUI();
+                renderSet();
+                return;
+            }
+
+            // Levels 1 & 2: 5 single questions, distinct types per game (shuffled order)
+            const typeOrder = (level === 1)
+                ? MathGen.shuffle([0,1,2,3,4,5,6,7,8,9]).slice(0, NUM_QUESTIONS)
+                : MathGen.shuffle([0,1,2,3,4,5,6,7,8,9,10,11,12,13]).slice(0, NUM_QUESTIONS);
+            const usedTexts = new Set();
+            const usedOpts = new Set();
+            const usedAns = new Set();
+            for(let i=0; i<NUM_QUESTIONS; i++) {
+                let q = null, tKey = null, oKey = null, aKey = null, tries = 0;
+                do {
+                    q = (level === 1) ? MathGen.generateL1(typeOrder[i]) : MathGen.generateL2(typeOrder[i]);
+                    tKey = q.text;
+                    oKey = [...q.options].sort().join('~');
+                    aKey = q.answerStr;
+                    tries++;
+                } while ((usedTexts.has(tKey) || usedOpts.has(oKey) || usedAns.has(aKey)) && tries < 300);
+                usedTexts.add(tKey);
+                usedOpts.add(oKey);
+                usedAns.add(aKey);
+                currentQuestions.push(q);
+            }
+
+            updateLivesUI();
+            renderQuestion();
+        }
+
+        function updateLivesUI() {
+            const container = document.getElementById('lives-container');
+            const maxLives = LEVEL_LIVES[currentLevel];
+            container.innerHTML = '';
+            for (let i = 0; i < lives; i++) {
+                container.innerHTML += '<span class="heart-bounce">❤️</span>';
+            }
+            for (let i = lives; i < maxLives; i++) {
+                container.innerHTML += '<span class="opacity-30 grayscale">❤️</span>';
+            }
+        }
+
+        function renderQuestion() {
+            document.getElementById('q-counter').textContent = `${currentQuestionIndex + 1}/${currentQuestions.length}`;
+            const q = currentQuestions[currentQuestionIndex];
+
+            // Ensure single-question UI is visible and L3 area hidden
+            document.getElementById('l3-area').classList.add('hidden');
+            document.getElementById('question-display').classList.remove('hidden');
+
+            const displayEl = document.getElementById('question-display');
+            displayEl.innerHTML = q.text;
+
+            document.getElementById('question-instruction').textContent = q.instruction;
+            document.getElementById('paper-hint').textContent =
+                (q.paper === 'TSA') ? 'TSA S3 2021-2025 · ' + q.src :
+                (q.paper === 'Paper 1') ? 'DSE Paper 1 · ' + q.src :
+                'DSE Paper 2 · ' + q.src;
+
+            const partLabelEl = document.getElementById('part-label');
+            partLabelEl.textContent = '';
+            partLabelEl.classList.add('hidden');
+
+            // Determine Mode for this specific question — family rule:
+            // Paper 2 questions = Multiple Choice only; Paper 1 / TSA = fill-in.
+            currentQuestionMode = (q.paper === 'Paper 2') ? 'mc' : 'fill';
+
+            const mcArea = document.getElementById('mc-options');
+            const fillArea = document.getElementById('conventional-area');
+            const hint = document.getElementById('format-hint');
+
+            if (currentQuestionMode === 'mc') {
+                mcArea.classList.remove('hidden');
+                fillArea.classList.add('hidden');
+                hint.textContent = "Multiple Choice Mode";
+
+                const btns = mcArea.querySelectorAll('button');
+                btns.forEach((btn, idx) => {
+                    btn.innerHTML = q.options[idx];
+                });
+            } else {
+                mcArea.classList.add('hidden');
+                fillArea.classList.remove('hidden');
+                hint.textContent = "Fill-in Mode";
+
+                document.getElementById('conventional-input').value = '';
+                document.getElementById('math-preview').textContent = 'Empty';
+
+                // Inject helper buttons
+                const helperBox = document.getElementById('helper-buttons');
+                helperBox.innerHTML = '';
+                ['1','2','3','4','5','6','7','8','9','0','/','.','-'].forEach(ch => {
+                    helperBox.innerHTML += `<button onclick="insertAtCursor('${ch}')" class="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded text-white font-mono text-sm transition">${ch}</button>`;
+                });
+            }
+
+            if (window.MathJax) {
+                MathJax.typesetPromise();
+            }
+        }
+
+        // --- Level 3: render the whole question set as (a)(b) blocks on one page ---
+        function renderSet() {
+            const set = currentSets[currentSetIndex];
+            document.getElementById('q-counter').textContent = `Set ${currentSetIndex + 1}/${currentSets.length}`;
+            document.getElementById('question-instruction').textContent = "Answer all parts of the question:";
+            document.getElementById('paper-hint').textContent = 'DSE Paper 1 · ' + set[0].src + ' · Multi-part';
+            document.getElementById('format-hint').textContent = 'Fill-in Mode';
+
+            const partLabelEl = document.getElementById('part-label');
+            partLabelEl.textContent = '';
+            partLabelEl.classList.add('hidden');
+
+            // Hide single-question UI, show L3 area
+            document.getElementById('question-display').classList.add('hidden');
+            document.getElementById('mc-options').classList.add('hidden');
+            document.getElementById('conventional-area').classList.add('hidden');
+            const l3Area = document.getElementById('l3-area');
+            l3Area.classList.remove('hidden');
+
+            const blocksEl = document.getElementById('l3-blocks');
+            blocksEl.innerHTML = '';
+
+            set.forEach((part, pi) => {
+                const block = document.createElement('div');
+                block.id = `l3-block-${pi}`;
+                block.className = `bg-slate-800/60 border ${part.done ? 'border-green-500/70' : 'border-slate-700'} rounded-2xl p-4 transition-all duration-300`;
+                blocksEl.appendChild(block);
+                rebuildL3Block(pi);
+            });
+
+            if (window.MathJax) MathJax.typesetPromise();
+        }
+
+        function insertL3Char(pi, ch) {
+            const f = document.getElementById(`l3-input-${pi}`);
+            const start = f.selectionStart ?? f.value.length;
+            const end = f.selectionEnd ?? f.value.length;
+            f.value = f.value.substring(0, start) + ch + f.value.substring(end, f.value.length);
+            const pos = start + ch.length;
+            f.setSelectionRange(pos, pos);
+            f.focus();
+            updateL3Preview(pi);
+        }
+
+        function renderPreviewInto(el, input) {
+            const v = String(input || '').trim();
+            if (!v) { el.textContent = 'Empty'; return; }
+            const m = v.match(/^([\d.]+)\s*\/\s*([\d.]+)$/);
+            if (m) {
+                el.innerHTML = '$ \\dfrac{' + m[1] + '}{' + m[2] + '} $';
+                if (window.MathJax) { try { MathJax.typesetPromise([el]).catch(() => {}); } catch (e) {} }
+            } else {
+                el.textContent = v;
+            }
+        }
+
+        function updateL3Preview(pi) {
+            const input = document.getElementById(`l3-input-${pi}`).value;
+            const previewBox = document.getElementById(`l3-preview-${pi}`);
+            if (!previewBox) return;
+            renderPreviewInto(previewBox, input);
+        }
+
+        function submitSetPartMC(pi, btnIdx) {
+            const set = currentSets[currentSetIndex];
+            const part = set[pi];
+            if (part.done) return;
+            activePart = part;
+            const isCorrect = (part.options[btnIdx] === `$ ${part.mcAnswerStr} $`);
+            processSetAnswer(pi, isCorrect);
+        }
+
+        function submitSetPartFill(pi) {
+            const set = currentSets[currentSetIndex];
+            const part = set[pi];
+            if (part.done) return;
+            activePart = part;
+
+            const rawInput = document.getElementById(`l3-input-${pi}`).value;
+            if (!rawInput.trim()) {
+                showToast("Please enter an answer.", "info");
+                return;
+            }
+            const cleanInput = rawInput.toLowerCase().replace(/\*/g, '');
+            const isCorrect = checkFillAnswer(cleanInput, part);
+            processSetAnswer(pi, isCorrect);
+        }
+
+        function rebuildL3Block(pi) {
+            const part = currentSets[currentSetIndex][pi];
+            const block = document.getElementById(`l3-block-${pi}`);
+            if (!block) return;
+            let inner = '';
+            inner += `<div class="flex justify-between items-center mb-2">
+                <span class="text-sm font-bold text-emerald-400">Part ${part.partLabel}</span>
+                <span id="l3-status-${pi}" class="${part.done ? 'text-green-400' : 'text-slate-400'} text-sm font-semibold">${part.done ? '✓ Correct' : ''}</span>
+            </div>`;
+            inner += `<div id="l3-q-${pi}" class="text-lg sm:text-xl text-white mb-3 text-left overflow-x-auto min-h-[40px] leading-relaxed">${part.qHtml}</div>`;
+            if (part.done) {
+                inner += `<div class="text-center text-green-400 text-sm py-2 font-semibold">Answer: $ ${part.mcAnswerStr} $</div>`;
+            } else if (part.mode === 'mc') {
+                inner += `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="l3-mc-${pi}">`;
+                part.options.forEach((o, bi) => {
+                    inner += `<button onclick="submitSetPartMC(${pi}, ${bi})" class="option-btn bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl p-3 text-lg transition-all shadow-md active:scale-95 min-h-[56px] flex items-center justify-center">${o}</button>`;
+                });
+                inner += `</div>`;
+            } else {
+                inner += `
+                <div class="flex gap-2 w-full">
+                    <input type="text" id="l3-input-${pi}" placeholder="e.g. 13/81" oninput="updateL3Preview(${pi})" onkeypress="if(event.key==='Enter')submitSetPartFill(${pi})" class="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-lg font-mono text-white outline-none focus:border-amber-500 transition shadow-inner">
+                    <button onclick="submitSetPartFill(${pi})" class="bg-amber-600 hover:bg-amber-500 text-white font-bold px-4 rounded-lg text-base transition shadow-md active:scale-95">Submit</button>
+                </div>
+                <div id="l3-helpers-${pi}" class="flex flex-wrap gap-2 justify-center w-full mt-2">`;
+                ['1','2','3','4','5','6','7','8','9','0','/','.','-'].forEach(op => {
+                    inner += `<button onclick="insertL3Char(${pi},'${op}')" class="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded text-white font-mono text-sm transition">${op}</button>`;
+                });
+                inner += `</div>
+                <div class="w-full p-3 bg-slate-900/60 border border-slate-700 rounded-lg text-center mt-2">
+                    <span class="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1 block">Live Answer Preview</span>
+                    <div id="l3-preview-${pi}" class="text-lg text-slate-300 min-h-[28px] flex items-center justify-center">Empty</div>
+                </div>`;
+            }
+            block.innerHTML = inner;
+            block.classList.remove('border-slate-700');
+            block.classList.add(part.done ? 'border-green-500/70' : 'border-slate-700');
+            if (window.MathJax) MathJax.typesetPromise([block]);
+        }
+
+        function processSetAnswer(pi, isCorrect) {
+            levelStats[`level${currentLevel}`].total++;
+
+            if (isCorrect) {
+                levelStats[`level${currentLevel}`].correct++;
+                showToast(`Part ${currentSets[currentSetIndex][pi].partLabel} correct! Awesome job.`, "success");
+
+                const set = currentSets[currentSetIndex];
+                set[pi].done = true;
+                rebuildL3Block(pi);
+
+                if (set.every(p => p.done)) {
+                    setTimeout(() => {
+                        currentSetIndex++;
+                        if (currentSetIndex >= currentSets.length) {
+                            winGame();
+                        } else {
+                            renderSet();
+                        }
+                    }, 700);
+                }
+            } else {
+                showWrongReflectionModal();
+            }
+        }
+
+        function insertAtCursor(myValue) {
+            const myField = document.getElementById('conventional-input');
+            if (document.selection) {
+                myField.focus();
+                sel = document.selection.createRange();
+                sel.text = myValue;
+            } else if (myField.selectionStart || myField.selectionStart == '0') {
+                var startPos = myField.selectionStart;
+                var endPos = myField.selectionEnd;
+                myField.value = myField.value.substring(0, startPos) + myValue + myField.value.substring(endPos, myField.value.length);
+                myField.selectionStart = startPos + myValue.length;
+                myField.selectionEnd = startPos + myValue.length;
+            } else {
+                myField.value += myValue;
+            }
+            myField.focus();
+            updateLivePreview();
+        }
+
+        function handleEnter(e) {
+            if(e.key === 'Enter') submitFillAnswer();
+        }
+
+        function submitMCAnswer(btnIndex) {
+            const q = currentQuestions[currentQuestionIndex];
+            const selectedText = q.options[btnIndex];
+            const isCorrect = (selectedText === `$ ${q.mcAnswerStr} $`);
+            processAnswer(isCorrect);
+        }
+
+        function submitFillAnswer() {
+            const q = currentQuestions[currentQuestionIndex];
+            const rawInput = document.getElementById('conventional-input').value;
+
+            if(!rawInput.trim()) {
+                showToast("Please enter an answer.", "info");
+                return;
+            }
+
+            const cleanInput = rawInput.toLowerCase().replace(/\*/g, '');
+            const isCorrect = checkFillAnswer(cleanInput, q);
+            processAnswer(isCorrect);
+        }
+
+        function processAnswer(isCorrect) {
+            // Track total attempts for the current level
+            levelStats[`level${currentLevel}`].total++;
+
+            if (isCorrect) {
+                // Track correct attempts
+                levelStats[`level${currentLevel}`].correct++;
+                showToast("Correct! Awesome job.", "success");
+                currentQuestionIndex++;
+
+                if (currentQuestionIndex >= currentQuestions.length) {
+                    winGame();
+                } else {
+                    renderQuestion();
+                }
+            } else {
+                // Instantly pop up the wrong reflection modal before deducting life
+                showWrongReflectionModal();
+            }
+        }
+
+        function showWrongReflectionModal() {
+            const modal = document.getElementById('wrong-reflection-modal');
+            modal.classList.remove('hidden');
+            if(window.MathJax) MathJax.typesetPromise([modal]);
+        }
+
+        function submitWrongReflection(selectedLaw) {
+            const q = (currentLevel === 3) ? activePart : currentQuestions[currentQuestionIndex];
+            const actualLaw = q.firstStepLaw;
+
+            let isLawCorrect = (selectedLaw === actualLaw);
+            if (actualLaw === 'use_a' && selectedLaw !== '') isLawCorrect = true;
+
+            document.getElementById('wrong-reflection-modal').classList.add('hidden');
+
+            if (isLawCorrect) {
+                showToast("Good reflection! You identified the correct technique to start with.", "success");
+            } else {
+                showToast("Not quite! Remember to check the Formula sheet or ask AI Tutor.", "error");
+            }
+
+            // Deduct life and shake the game screen to indicate a mistake
+            lives--;
+            updateLivesUI();
+            updateLiveScore();
+            showWrongFeedback();
+
+            const gameArea = document.getElementById('main-game-area');
+            gameArea.classList.add('shake');
+            setTimeout(() => gameArea.classList.remove('shake'), 400);
+
+            if (lives <= 0) {
+                setTimeout(() => {
+                    showToast("Mission Failed. Out of lives!", "error");
+                    quitGame();
+                }, 500);
+            }
+        }
+
+        function winGame() {
+            badgeRecords[`level${currentLevel}`] = true;
+            const earned = currentAttemptMarks();
+            scoreTotals[`level${currentLevel}`] += earned;
+            saveScores();
+            showToast(`Level ${currentLevel} Complete! +${earned} marks earned! 🏆`, "success");
+            quitGame();
+        }
+
+        function quitGame() {
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('dashboard-screen').classList.remove('hidden');
+            updatePassportUI();
+        }
+
+        // Live Answer Preview for Fill-in Mode
+        function updateLivePreview() {
+            const input = document.getElementById('conventional-input').value;
+            const previewBox = document.getElementById('math-preview');
+            if (!previewBox) return;
+            renderPreviewInto(previewBox, input);
+        }
+
+        // --- HELPER UI FUNCTIONS ---
+
+        function showToast(message, type) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('fade-out');
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+        }
+
+        function showWrongFeedback() {
+            const el = document.getElementById('feedback-toast');
+            el.classList.remove('hidden');
+            setTimeout(() => {
+                el.classList.add('hidden');
+            }, 3000);
+        }
+
+        function toggleCheatSheet() {
+            const modal = document.getElementById('cheat-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        function closeAITutor() {
+            document.getElementById('ai-tutor-modal').classList.add('hidden');
+        }
+
+        function askAITutor() {
+            let q;
+            if (currentLevel === 3) {
+                q = activePart;
+                if (!q) {
+                    q = currentSets[currentSetIndex].find(p => !p.done) || currentSets[currentSetIndex][0];
+                }
+            } else {
+                q = currentQuestions[currentQuestionIndex];
+            }
+            let hint = "";
+            switch (q.firstStepLaw) {
+                case 'freq_table':
+                    hint = "Relative frequency = frequency of the event ÷ total frequency. Add up ALL the frequencies to get the total first, then simplify the fraction.";
+                    break;
+                case 'list_outcomes':
+                    hint = "List ALL possible outcomes with a table or tree diagram. Then count the favourable outcomes and divide by the total. P = favourable ÷ total.";
+                    break;
+                case 'fraction_count':
+                    hint = "Set up the equation: favourable outcomes ÷ total outcomes = the given fraction. Write it with the unknown, then cross-multiply to solve.";
+                    break;
+                case 'combinations':
+                    hint = "For objects drawn AT THE SAME TIME (order does not matter), use $C(n,r) = \\dfrac{n!}{r!(n-r)!}$. Total = $C(\\text{total}, k)$; favourable = $C(\\text{colour}, \\text{count}) \\times C(\\text{rest}, k-\\text{count})$.";
+                    break;
+                case 'arrangement':
+                    hint = "Arrangements use factorials. If two specific people must be together, treat them as ONE block, then multiply by the ways to arrange inside the block. For 'no adjacent', place the minority group in the gaps of the majority group.";
+                    break;
+                case 'turn_game':
+                    hint = "The game repeats with the same chance of continuing. P = first-turn success ÷ (1 − P(the round continues)). Sum the geometric series, don't list infinite rounds.";
+                    break;
+                case 'binomial':
+                    hint = "Each trial is independent. Use P(at least ...) = 1 − P(complement). For n trials: P(exactly k) = $C(n,k)\\,p^k(1-p)^{n-k}$.";
+                    break;
+                case 'use_a':
+                    hint = "This part builds on part (a) — reuse the probability you just found. E.g. P(at most / different) = 1 − P(from part (a)). Substitute instead of starting from scratch.";
+                    break;
+                default:
+                    hint = "Draw the tree diagram first: for each stage, write the probability on each branch. Then decide whether you add or multiply the branches.";
+            }
+
+            document.getElementById('ai-content-area').innerHTML = `
+                <div class="bg-slate-800/80 p-5 rounded-lg border border-purple-500/30 mb-4 shadow-inner">
+                    <p class="text-purple-300 font-semibold mb-2 text-lg">🤖 AI Hint specifically for this question:</p>
+                    <p class="text-white text-base">${hint}</p>
+                </div>
+                <div class="bg-slate-800/80 p-5 rounded-lg border border-slate-600 shadow-inner">
+                    <p class="text-amber-400 font-semibold mb-2 text-lg">💡 General Checklist:</p>
+                    <ul class="list-disc list-inside space-y-2 text-slate-300">
+                        <li>Total outcomes first, favourable outcomes second — never mix them up.</li>
+                        <li>Drawing WITHOUT replacement changes the totals stage by stage.</li>
+                        <li>"At least one" is almost always easier as 1 − P(none).</li>
+                        <li>Simplfy your fraction before choosing the answer.</li>
+                    </ul>
+                </div>
+            `;
+            document.getElementById('ai-tutor-modal').classList.remove('hidden');
+            if(window.MathJax) MathJax.typesetPromise();
+        }
+
+        // --- REFLECTION & SUBMISSION LOGIC ---
+
+        function submitToTeacher() {
+            if (!studentProfile) return;
+
+            const btn = document.getElementById('btn-submit-teacher');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = 'Sending... ⏳';
+            btn.disabled = true;
+
+            const getPercent = (lvl) => {
+                const s = levelStats[lvl];
+                return s.total > 0 ? Math.round((s.correct / s.total) * 100) + "%" : "N/A";
+            };
+
+            const payload = {
+                timestamp: new Date().toISOString(),
+                topic: 'Probability',
+                class: studentProfile.class,
+                no: studentProfile.no,
+                name: studentProfile.name,
+                level1: badgeRecords.level1,
+                level1Percent: getPercent('level1'),
+                level1Marks: scoreTotals.level1,
+                level2: badgeRecords.level2,
+                level2Percent: getPercent('level2'),
+                level2Marks: scoreTotals.level2,
+                level3: badgeRecords.level3,
+                level3Percent: getPercent('level3'),
+                level3Marks: scoreTotals.level3,
+                totalMarks: scoreTotals.level1 + scoreTotals.level2 + scoreTotals.level3
+            };
+
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'cors',
+                headers: {
+                    'Content-Type': 'text/plain;charset=UTF-8',
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(resp => resp.json())
+            .then(data => {
+                if (data && data.status === 'success') {
+                    showToast("Data submitted to teacher successfully!", "success");
+                } else {
+                    showToast("Server replied but data not saved: " + (data && data.message ? data.message : 'unknown error'), "error");
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                showToast("Submission failed. Check your internet / Apps Script deployment.", "error");
+            })
+            .finally(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
+        }
+    </script>
+</body>
+</html>
