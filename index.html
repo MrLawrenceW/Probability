@@ -12,8 +12,13 @@
         };
     </script>
     <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
+        /* Paper typography: question text in Times New Roman, unknowns italic */
+        #question-display, .qtext { font-family: 'Times New Roman', Times, serif; }
+        .mathvar { font-style: italic; }
+
         .glass-panel {
             background: rgba(30, 41, 59, 0.8);
             backdrop-filter: blur(12px);
@@ -77,6 +82,51 @@
             color: #e2e8f0;
         }
         .stat-table th { background: rgba(51, 65, 85, 0.6); color: #94a3b8; font-weight: 600; }
+
+        /* ==== COLORFUL THEME + ANSWER ANIMATIONS ==== */
+        body {
+            background-image:
+                radial-gradient(ellipse 80% 50% at 15% -10%, rgba(99, 102, 241, 0.30), transparent 60%),
+                radial-gradient(ellipse 60% 45% at 85% -5%, rgba(217, 70, 239, 0.22), transparent 60%),
+                radial-gradient(ellipse 75% 50% at 50% 110%, rgba(34, 211, 238, 0.20), transparent 60%);
+            background-attachment: fixed;
+        }
+        #login-screen h1 {
+            background: linear-gradient(90deg, #fbbf24, #f472b6, #818cf8, #34d399);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+        }
+        #dashboard-screen .glass-panel:hover { box-shadow: 0 0 26px rgba(139, 92, 246, 0.25); }
+        @keyframes flashGreen {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+            50% { box-shadow: 0 0 42px 10px rgba(34, 197, 94, 0.55); }
+        }
+        @keyframes flashRed {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+            30%, 60% { box-shadow: 0 0 48px 12px rgba(239, 68, 68, 0.6); }
+        }
+        .correct-flash { animation: flashGreen 0.7s ease-in-out; }
+        .wrong-flash { animation: flashRed 0.6s ease-in-out; }
+        @keyframes scoreBounce {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.45); }
+            100% { transform: scale(1); }
+        }
+        .score-bounce { animation: scoreBounce 0.5s ease; }
+        @keyframes heartBreakAnim {
+            0% { transform: scale(1); opacity: 1; }
+            40% { transform: scale(1.6); }
+            100% { transform: scale(0.4); opacity: 0.35; }
+        }
+        .heart-broken { display: inline-block; animation: heartBreakAnim 0.55s ease forwards; }
+        @keyframes badgeBounce {
+            0% { transform: scale(0.7); }
+            55% { transform: scale(1.12); }
+            100% { transform: scale(1); }
+        }
+        .badge-bounce { animation: badgeBounce 0.6s ease; }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-4 selection:bg-amber-500 selection:text-white">
@@ -400,7 +450,24 @@
     <script>
         // Deployed Google Apps Script Web App URL
         const GOOGLE_SCRIPT_URL =
-            'https://script.google.com/macros/s/AKfycbxpmwJ_BmXakqRHiHr5N57z6P4GPI_m_vkyIy7T9chnO4pbuH_aVrD0RUsj5nlYOOwY/exec';
+            'https://script.google.com/macros/s/AKfycbySrOrfQ6RZEeiTMlT2PFOEqUjgK7qkVDe-pR5SG2c7KJer1mX0-gOlFxX0zy47CzYAVQ/exec';
+
+        const APP_VERSION = '1';
+        (function watchAppVersion() {
+            const file = (location.pathname.split('/').pop() || 'index.html').split('?')[0];
+            const check = () => {
+                fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data && data[file] && data[file] !== APP_VERSION) location.reload();
+                    })
+                    .catch(() => {});
+            };
+            setInterval(check, 60000);
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') check();
+            });
+        })();
 
         let studentProfile = null;
         let badgeRecords = { level1: false, level2: false, level3: false };
@@ -1405,6 +1472,72 @@
             return false;
         }
 
+        // --- PAPER TYPOGRAPHY: question text in Times New Roman, unknowns italic ---
+        // Generators keep PLAIN text (QA modules parse it); styling happens here at render time.
+        const MATHVAR_SET = new Set('nkPQ'.split(''));
+        function styleVars(html) {
+            return html.split(/(<[^>]+>|\$[^$]*\$)/).map(seg => {
+                if (seg.charAt(0) === '<' || seg.charAt(0) === '$') return seg; // existing tags / MathJax stay untouched
+                return seg.replace(/(^|[^A-Za-zℓ])([A-Za-zℓ])(?=[^A-Za-zℓ]|$)/g,
+                    (m, pre, ch) => pre + (MATHVAR_SET.has(ch) ? '<i class="mathvar">' + ch + '</i>' : ch));
+            }).join('');
+        }
+
+        // --- COLORFUL ANSWER ANIMATIONS (confetti / flash / bounce) ---
+        function celebrate(big) {
+            if (typeof confetti === 'undefined') return;
+            confetti({
+                particleCount: big ? 170 : 70,
+                spread: big ? 100 : 60,
+                startVelocity: big ? 40 : 25,
+                origin: { y: 0.6 },
+                colors: ['#fbbf24', '#f472b6', '#818cf8', '#34d399', '#22d3ee', '#f87171']
+            });
+        }
+        function animateCorrect() {
+            celebrate(false);
+            const area = document.getElementById('main-game-area');
+            if (area) {
+                area.classList.remove('correct-flash', 'wrong-flash');
+                void area.offsetWidth;
+                area.classList.add('correct-flash');
+            }
+            const sc = document.getElementById('live-score');
+            if (sc) {
+                sc.classList.remove('score-bounce');
+                void sc.offsetWidth;
+                sc.classList.add('score-bounce');
+            }
+        }
+        function animateWrong() {
+            const area = document.getElementById('main-game-area');
+            if (area) {
+                area.classList.remove('correct-flash', 'wrong-flash');
+                void area.offsetWidth;
+                area.classList.add('wrong-flash');
+            }
+        }
+        function heartBreak() {
+            const c = document.getElementById('lives-container');
+            if (!c) return;
+            const spans = c.querySelectorAll('span');
+            const dead = spans[lives];
+            if (dead) {
+                dead.textContent = '💔';
+                dead.classList.remove('opacity-30', 'grayscale');
+                dead.classList.add('heart-broken');
+            }
+        }
+        function celebrateBig() {
+            celebrate(true);
+            const badge = document.getElementById('badge-card-' + currentLevel);
+            if (badge) {
+                badge.classList.remove('badge-bounce');
+                void badge.offsetWidth;
+                badge.classList.add('badge-bounce');
+            }
+        }
+
         // --- CORE GAME LOGIC ---
 
         function login() {
@@ -1616,7 +1749,7 @@
             document.getElementById('question-display').classList.remove('hidden');
 
             const displayEl = document.getElementById('question-display');
-            displayEl.innerHTML = q.text;
+            displayEl.innerHTML = styleVars(q.text);
 
             document.getElementById('question-instruction').textContent = q.instruction;
             document.getElementById('paper-hint').textContent =
@@ -1763,7 +1896,7 @@
                 <span class="text-sm font-bold text-emerald-400">Part ${part.partLabel}</span>
                 <span id="l3-status-${pi}" class="${part.done ? 'text-green-400' : 'text-slate-400'} text-sm font-semibold">${part.done ? '✓ Correct' : ''}</span>
             </div>`;
-            inner += `<div id="l3-q-${pi}" class="text-lg sm:text-xl text-white mb-3 text-left overflow-x-auto min-h-[40px] leading-relaxed">${part.qHtml}</div>`;
+            inner += `<div id="l3-q-${pi}" class="qtext text-lg sm:text-xl text-white mb-3 text-left overflow-x-auto min-h-[40px] leading-relaxed">${styleVars(part.qHtml)}</div>`;
             if (part.done) {
                 inner += `<div class="text-center text-green-400 text-sm py-2 font-semibold">Answer: $ ${part.mcAnswerStr} $</div>`;
             } else if (part.mode === 'mc') {
@@ -1802,7 +1935,8 @@
                 showToast(`Part ${currentSets[currentSetIndex][pi].partLabel} correct! Awesome job.`, "success");
 
                 const set = currentSets[currentSetIndex];
-                set[pi].done = true;
+                                animateCorrect();
+                                set[pi].done = true;
                 rebuildL3Block(pi);
 
                 if (set.every(p => p.done)) {
@@ -1816,7 +1950,8 @@
                     }, 700);
                 }
             } else {
-                showWrongReflectionModal();
+                                animateWrong();
+                                showWrongReflectionModal();
             }
         }
 
@@ -1871,7 +2006,8 @@
             if (isCorrect) {
                 // Track correct attempts
                 levelStats[`level${currentLevel}`].correct++;
-                showToast("Correct! Awesome job.", "success");
+                                animateCorrect();
+                                showToast("Correct! Awesome job.", "success");
                 currentQuestionIndex++;
 
                 if (currentQuestionIndex >= currentQuestions.length) {
@@ -1881,7 +2017,8 @@
                 }
             } else {
                 // Instantly pop up the wrong reflection modal before deducting life
-                showWrongReflectionModal();
+                                animateWrong();
+                                showWrongReflectionModal();
             }
         }
 
@@ -1909,6 +2046,7 @@
             // Deduct life and shake the game screen to indicate a mistake
             lives--;
             updateLivesUI();
+            heartBreak();
             updateLiveScore();
             showWrongFeedback();
 
@@ -1925,7 +2063,8 @@
         }
 
         function winGame() {
-            badgeRecords[`level${currentLevel}`] = true;
+                        badgeRecords[`level${currentLevel}`] = true;
+            celebrateBig();
             const earned = currentAttemptMarks();
             scoreTotals[`level${currentLevel}`] += earned;
             saveScores();
