@@ -459,7 +459,7 @@
         const GOOGLE_SCRIPT_URL =
             'https://script.google.com/macros/s/AKfycbySrOrfQ6RZEeiTMlT2PFOEqUjgK7qkVDe-pR5SG2c7KJer1mX0-gOlFxX0zy47CzYAVQ/exec';
 
-        const APP_VERSION = '2';
+        const APP_VERSION = '3';
         (function watchAppVersion() {
             const file = (location.pathname.split('/').pop() || 'index.html').split('?')[0];
             const check = () => {
@@ -677,10 +677,10 @@
                 return this.shuffle(texArr.map(t => '$ ' + t + ' $'));
             },
             // small frequency table HTML
-            table: function (headRow, freqRow) {
-                let h = '<table class="stat-table"><tbody><tr><th></th>';
+            table: function (headRow, freqRow, headLabel, freqLabel) {
+                let h = '<table class="stat-table"><tbody><tr><th>' + (headLabel || 'Outcome') + '</th>';
                 for (const c of headRow) h += '<th>' + c + '</th>';
-                h += '</tr><tr><td>Frequency</td>';
+                h += '</tr><tr><td>' + (freqLabel || 'Frequency') + '</td>';
                 for (const c of freqRow) h += '<td>' + c + '</td>';
                 h += '</tr></tbody></table>';
                 return h;
@@ -761,7 +761,7 @@
                     const T = x + N + y;
                     if (variant === 0) {
                         text = `The following table shows the service status of trains and their corresponding frequency at a station yesterday.` +
-                            this.table(['Left ahead of time', 'Left on time', 'Left behind schedule'], [x, N, y]) +
+                            this.table(['Left ahead of time', 'Left on time', 'Left behind schedule'], [x, N, y], 'Service status') +
                             `Find the relative frequency of the service status "left behind schedule" at the station yesterday.`;
                         answerStr = this.fstr(y, T);
                         mcTex = this.ftex(y, T);
@@ -769,7 +769,7 @@
                         src = 'TSA 3B12 2023 Q181';
                     } else {
                         text = `The following table shows the personal vaccination history and the corresponding frequency of people who reserved a booking at a vaccination clinic yesterday.` +
-                            this.table(['Never vaccinated', 'Received 1 to 3 doses of vaccine', 'Received more than 3 doses of vaccine'], [x, N, y]) +
+                            this.table(['Never vaccinated', 'Received 1 to 3 doses of vaccine', 'Received more than 3 doses of vaccine'], [x, N, y], 'Vaccination history') +
                             `According to the table above, find the relative frequency of the people who received 1 dose or more of vaccine.`;
                         answerStr = this.fstr(N + y, T);
                         mcTex = this.ftex(N + y, T);
@@ -890,7 +890,7 @@
                     const pq = this.red(F0 + k, T0 + k);
                     paper = 'Paper 2';
                     text = `The table below shows the distribution of the numbers of keys owned by a group of housewives.` +
-                        this.table([3, 4, 5, 6, 7, 8], [10, 9, 4, 3, F0, 'k']) +
+                        this.table([3, 4, 5, 6, 7, 8], [10, 9, 4, 3, F0, 'k'], 'Number of keys', 'Number of housewives') +
                         `If a housewife is randomly selected from the group, then the probability that she owns more than 6 keys is ${pq[0]}/${pq[1]}. Find k.`;
                     answerStr = String(k);
                     mcTex = String(k);
